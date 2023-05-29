@@ -39,7 +39,7 @@ typedef struct
 {
 	int pwr_ext, msg_number, event_code, status, modules_st, modules_st2, gsm, nav_rcvr_state, sat, engine_hours, flex_fuel1, can_fuel_level,\	
 	engine_rpm, engine_coolant_temp, accel_pedal_pos, can_speed, pdop, fuel_temp101, param1, param16, param17, param18, param65, sats_gps, 
-	sats_glonass, mcc1, mnc1, lac1, cell1, rx1, ta1, can33, can37, can38, can39, can40, can41, can42,can43;
+	sats_glonass, mcc1, mnc1, lac1, cell1, rx1, ta1, can33, can37, can38, can39, can40, can41, can42,can43, acc_x, acc_y, acc_z, rssi, odometer, bootcount;
 	double can_fuel_consumpt, can_mileage, mileage, adc0, adc1, param9, param64, can34, can35, can36;
 } OtherParams;
 
@@ -291,6 +291,24 @@ OtherParams GetOtherParams(DataS* pr, int cnt)
 				break;
 			cases("can36")
 				res.can36 = p.d_value;
+				break;
+			cases("acc_x")
+				res.acc_x = p.int_value;
+				break;
+			cases("acc_y")
+				res.acc_y = p.int_value;
+				break;
+			cases("acc_z")
+				res.acc_z = p.int_value;
+				break;
+			cases("rssi")
+				res.rssi = p.int_value;
+				break;
+			cases("odometer")
+				res.odometer = p.int_value;
+				break;
+			cases("bootcount")
+				res.bootcount = p.int_value;
 				break;
 			defaults
 				//printf("No match\n");
@@ -657,6 +675,48 @@ void terminal_decode(char *parcel, int parcel_size, ST_ANSWER *answer, ST_WORKER
                 // 2 ignore records without L (login) field
                 break;
             }
+
+			#B#
+			250523; // date 
+			022812; // time 
+			NA; // lat1
+			NA; // lat2
+			NA; // lon1
+			NA; // lon2 
+			NA; // speed
+			NA; // course
+			NA; // height
+			NA; // sats
+			NA;
+			1;
+			0;
+			12.672;
+			NA;
+			status:1:1075314720,
+			acc_x:1:160,
+			acc_y:1:352,
+			acc_z:1:928,
+			rssi:1:-97,
+			odometer:1:56012033,
+			bootcount:1:329
+			
+			|
+			250523;
+			023312;
+			NA;
+			NA;
+			NA;
+			NA;
+			NA;
+			NA;
+			NA;
+			NA;
+			NA;
+			1;
+			0;
+			12.672;
+			NA;
+			status:1:1075314720,acc_x:1:160,acc_y:1:348,acc_z:1:928,rssi:1:-97,odometer:1:56012033,bootcount:1:329|250523;023812;NA;NA;NA;NA;NA;NA;NA;NA;NA;1;0;12.672;NA;status:1:1075314720,acc_x:1:160,acc_y:1:344,acc_z:1:932,rssi:1:-97,odometer:1:56012033
 
 			cRec1 = strtok(&cRec[3], "|");
 
