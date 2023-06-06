@@ -32,7 +32,7 @@ typedef struct
 	int    int_value;
 	double d_value;
 	char   txt_value[256];
-} params;
+} OtherParams;
 
 
 typedef struct 
@@ -41,7 +41,7 @@ typedef struct
 	engine_rpm, engine_coolant_temp, accel_pedal_pos, can_speed, pdop, fuel_temp101, param1, param16, param17, param18, param65, sats_gps, 
 	sats_glonass, mcc1, mnc1, lac1, cell1, rx1, ta1, can33, can37, can38, can39, can40, can41, can42,can43, acc_x, acc_y, acc_z, rssi, odometer, bootcount;
 	double can_fuel_consumpt, can_mileage, mileage, adc0, adc1, param9, param64, can34, can35, can36;
-} OtherParams;
+} AllParams;
 
 
 
@@ -79,9 +79,9 @@ int stringsplit(char *str, char delim, DataS *lst)
 }
 
 
-params getParams(char *str)
+OtherParams getParams(char *str)
 {
-	params p;
+	OtherParams p;
 	char buf[256];
 	memset(buf,0,sizeof(buf));
 	int j = 0;
@@ -135,13 +135,13 @@ params getParams(char *str)
 	return p;
 }
 
-OtherParams GetOtherParams(DataS* pr, int cnt)
+AllParams GetAllParams(DataS* pr, int cnt)
 {
-	OtherParams res;
+	AllParams res;
 	memset(&res,0,sizeof(OtherParams));
 	for (int j = 0; j < cnt; j++)
 	{
-		params p = getParams(pr[j].str);
+		OtherParams p = getParams(pr[j].str);
 		/*printf("name: %s\n", p.name);
 		printf("type: %d\n", p.type);
 		if (p.type == 1) printf("value: %d\n", p.int_value);
@@ -332,19 +332,19 @@ void terminal_decode(char *parcel, int parcel_size, ST_ANSWER *answer, ST_WORKER
 	char cTime[10], cDate[10], cLon, cLat, *cRec, *cRec1, adc[2048], any[2048];
 	struct tm tm_data;
 	time_t ulliTmp;
-	double dLon, dLat, dAltitude, dHDOP;
-	int iAnswerSize, iFields, iTemp, iCurs, iSatellits, iSpeed, iReadedRecords = 0, iBut = 0;
+	double dLon = 0, dLat = 0, dAltitude = 0, dHDOP;
+	int iAnswerSize, iFields, iTemp, iCurs = 0, iSatellits = 0, iSpeed = 0, iReadedRecords = 0, iBut = 0;
 	unsigned int iInputs = 0, iOutputs = 0;
+
+	int rsrv1, rsrv2, rsrv3;
+	double rsrv4;
 
 	DataS ReadParams[32];
 	int cntPar;
 
 	// Parametrs
-	OtherParams otherParams;
-	/*int pwr_ext, msg_number, event_code, status, modules_st, modules_st2, gsm, nav_rcvr_state, sat, engine_hours, flex_fuel1, can_fuel_level,\	
-	engine_rpm, engine_coolant_temp, accel_pedal_pos, can_speed, pdop, fuel_temp101, param1, param16, param17, param18, param65, sats_gps, 
-	sats_glonass, mcc1, mnc1, lac1, cell1, rx1, ta1, can33, can37, can38, can39, can40, can41, can42,can43;
-	double can_fuel_consumpt, can_mileage, mileage, adc0, adc1, param9, param64, can34, can35, can36;*/
+	AllParams allParams;
+	
 
 
 	memset(any,0,sizeof(any));
@@ -568,7 +568,7 @@ void terminal_decode(char *parcel, int parcel_size, ST_ANSWER *answer, ST_WORKER
 			}
 
 			
-			otherParams = GetOtherParams(ReadParams, cntPar);
+			allParams = GetAllParams(ReadParams, cntPar);
 			//printf("%d    %f \n", otherParams.pwr_ext, otherParams.adc0);
             if( iFields >= 8 ) {
 				if( answer->count < MAX_RECORDS - 1 )
@@ -675,55 +675,13 @@ void terminal_decode(char *parcel, int parcel_size, ST_ANSWER *answer, ST_WORKER
                 // 2 ignore records without L (login) field
                 break;
             }
-
-			#B#
-			250523; // date 
-			022812; // time 
-			NA; // lat1
-			NA; // lat2
-			NA; // lon1
-			NA; // lon2 
-			NA; // speed
-			NA; // course
-			NA; // height
-			NA; // sats
-			NA;
-			1;
-			0;
-			12.672;
-			NA;
-			status:1:1075314720,
-			acc_x:1:160,
-			acc_y:1:352,
-			acc_z:1:928,
-			rssi:1:-97,
-			odometer:1:56012033,
-			bootcount:1:329
 			
-			|
-			250523;
-			023312;
-			NA;
-			NA;
-			NA;
-			NA;
-			NA;
-			NA;
-			NA;
-			NA;
-			NA;
-			1;
-			0;
-			12.672;
-			NA;
-			status:1:1075314720,acc_x:1:160,acc_y:1:348,acc_z:1:928,rssi:1:-97,odometer:1:56012033,bootcount:1:329|250523;023812;NA;NA;NA;NA;NA;NA;NA;NA;NA;1;0;12.672;NA;status:1:1075314720,acc_x:1:160,acc_y:1:344,acc_z:1:932,rssi:1:-97,odometer:1:56012033
-
 			cRec1 = strtok(&cRec[3], "|");
 
 			while(cRec1) {
                 ++iReadedRecords;   // кол-во считанных сообщений
 				//                       1      2   3   4  5   6  7  8  9  10   11
-				iFields = sscanf(cRec1, "%[^;];%[^;];%lf;%c;%lf;%c;%d;%d;%lf;%d;%*[^|]",
+				iFields = sscanf(cRec1, "%[^;];%[^;];%lf;%c;%lf;%c;%d;%d;%lf;%d;%d;%d;%d;%lf;%s",
 									cDate, // 1
 									cTime, // 2
 									&dLat, // 3
@@ -733,10 +691,20 @@ void terminal_decode(char *parcel, int parcel_size, ST_ANSWER *answer, ST_WORKER
 									&iSpeed, // 7
 									&iCurs, // 8
 									&dAltitude, // 9
-									&iSatellits // 10
+									&iSatellits, // 10
+									&rsrv1, 
+									&rsrv2, 
+									&rsrv3,
+									&rsrv4,
+									any
 								  );
+				if (strlen(any) != 0)
+				{
+					cntPar = stringsplit(any, ',', &ReadParams);		
+					allParams = GetAllParams(ReadParams, cntPar);
+				}
 
-				if( iFields >= 10 ) {	// успешно считаны все поля
+				if( iFields >= 0 ) {	// успешно считаны все поля
 
 					if( answer->count < MAX_RECORDS - 1 )
 						answer->count++;
