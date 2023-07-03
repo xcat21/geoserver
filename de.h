@@ -156,10 +156,4 @@ typedef struct {
 } ST_ANSWER;
 // sizeof(ST_ANSWER)=11056
 
-
-typedef struct {
-    char imei[15];
-    char ip[16];
-} _imeiIndexes;
-
 #endif
