@@ -15,308 +15,133 @@
 #include "lib.h"    // MIN, MAX, BETWEEN, CRC, etc...
 #include "logger.h"
 #include "switchs.h"
+#include <dlfcn.h>	/* dlopen */
+
+#include "sys/time.h"
 
 const int MAX_PAR = 128;
 
-// typedef struct 
-// {
-// 	char str[1024];
-// } DataS;
-
-// typedef struct
-// {
-// 	char   name[256];
-// 	int    type;
-// 	int    int_value;
-// 	double d_value;
-// 	char   txt_value[256];
-// } OtherParams;
-
-
-// typedef struct 
-// {
-// 	int pwr_ext, msg_number, event_code, status, modules_st, modules_st2, gsm, nav_rcvr_state, sat, engine_hours, flex_fuel1, can_fuel_level,\	
-// 	engine_rpm, engine_coolant_temp, accel_pedal_pos, can_speed, pdop, fuel_temp101, param1, param16, param17, param18, param65, sats_gps, 
-// 	sats_glonass, mcc1, mnc1, lac1, cell1, rx1, ta1, can33, can37, can38, can39, can40, can41, can42,can43, acc_x, acc_y, acc_z, rssi, odometer, bootcount;
-// 	double can_fuel_consumpt, can_mileage, mileage, adc0, adc1, param9, param64, can34, can35, can36;
-// } AllParams;
+#pragma pack(push, 1)
+typedef struct {
+    uint16_t DEVICE_ID;  // 2
+    uint8_t  SIZE;       // 1
+    uint8_t  TYPE;       // 1
+} _head;
+typedef union
+{
+    _head msg;
+    char bytes[4];
+} _unionHead;
 
 
 
-
-// int stringsplit(char *str, char delim, DataS *lst)
-// {
-// 	char buf[1024];
-// 	memset(buf,0,sizeof(buf));
-// 	int j = 0;
-
-// 	int ok=0;
-// 	int parId = 0;
-// 	for (unsigned int i = 0; i<strlen(str); i++)
-// 	{
-// 		if (str[i]!=delim) { buf[j] = str[i]; j++; }
-// 		else 
-// 		{
-// 			ok=1;
-// 			j = 0;
-// 			strncpy(&lst[parId].str, buf, sizeof(buf));
-// 			parId++;
-// 			memset(buf,0,sizeof(buf));
-// 		}
-// 		if (i + 1 == strlen(str))
-// 		{
-// 			if (ok==1) {
-// 				strncpy(&lst[parId].str, buf, sizeof(buf));
-// 				parId++;
-// 			}
-// 			memset(buf,0,sizeof(buf));
-// 			j = 0;
-// 		}
-// 	}
-// 	return parId;
-// }
+typedef struct {
+    uint8_t  IMEI[15];      // 15
+    uint8_t  HW_TYPE;       // 1
+    uint8_t  REPLY_ENABLED; // 1
+    uint8_t  RESERVE[44];   // 44
+    uint8_t  CRC;           // 1
+} _imeiMessage;
+typedef union
+{
+    _imeiMessage msg;
+    char bytes[62];
+} _unionImeiMessage;
 
 
-// OtherParams getParams(char *str)
-// {
-// 	OtherParams p;
-// 	char buf[256];
-// 	memset(buf,0,sizeof(buf));
-// 	int j = 0;
-// 	int ok=0;
-// 	int parId = 0;
-// 	for (unsigned int i = 0; i<strlen(str); i++)
-// 	{
-// 		if (str[i]!=':') { buf[j] = str[i]; j++; }
-// 		else 
-// 		{
-// 			j = 0;
-// 			ok=1;
-// 			if (parId == 0)
-// 				strcpy(p.name, buf);
-// 			else if (parId == 1)
-// 				sscanf(buf, "%d", &p.type);
-// 			else if (parId == 2)
-// 			{
-// 				if (p.type == 0) 
-// 					sscanf(buf, "%d", &p.int_value);
-// 				else if (p.type == 1)
-// 					sscanf(buf, "%lf", &p.d_value);
-// 				else if (p.type == 2)
-// 					sscanf(buf, "%s", &p.txt_value);
-// 			}
-// 			parId++;
-// 			memset(buf,0,sizeof(buf));
-// 		}
-// 		if (i + 1 == strlen(str))
-// 		{
-// 			if (ok==1) {
-// 				if (parId == 0)
-// 					strcpy(p.name, buf);
-// 				else if (parId == 1)
-// 					sscanf(buf, "%d", &p.type);
-// 				else if (parId == 2)
-// 				{
-// 					if (p.type == 1) 
-// 						sscanf(buf, "%d", &p.int_value);
-// 					else if (p.type == 2)
-// 						sscanf(buf, "%lf", &p.d_value);
-// 					else if (p.type == 3)
-// 						sscanf(buf, "%s", &p.txt_value);
-// 				}
-// 				parId++;
-// 			}
-// 			memset(buf,0,sizeof(buf));
-// 			j = 0;
-// 		}
-// 	}
-// 	return p;
-// }
-
-// AllParams GetAllParams(DataS* pr, int cnt)
-// {
-// 	AllParams res;
-// 	memset(&res,0,sizeof(OtherParams));
-// 	for (int j = 0; j < cnt; j++)
-// 	{
-// 		OtherParams p = getParams(pr[j].str);
-// 		/*printf("name: %s\n", p.name);
-// 		printf("type: %d\n", p.type);
-// 		if (p.type == 1) printf("value: %d\n", p.int_value);
-// 		else if (p.type == 2) printf("value: %f\n", p.d_value);
-// 		else if (p.type == 3) printf("value: %s\n", p.txt_value);*/
-// 		switchs(p.name) {
-// 			cases("pwr_ext")
-// 				res.pwr_ext = p.int_value;				
-// 				break;
-// 			cases("msg_number")
-// 				res.msg_number = p.int_value;
-// 				break;
-// 			cases("event_code")
-// 				res.event_code = p.int_value;
-// 				break;
-// 			cases("status")
-// 				res.status = p.int_value;
-// 				break;
-// 			cases("modules_st")
-// 				res.modules_st = p.int_value;
-// 				break;
-// 			cases("modules_st2")
-// 				res.modules_st2 = p.int_value;
-// 				break;
-// 			cases("gsm")
-// 				res.gsm = p.int_value;
-// 				break;					
-// 			cases("nav_rcvr_state")
-// 				res.nav_rcvr_state = p.int_value;
-// 				break;
-// 			cases("sat")
-// 				res.sat = p.int_value;
-// 				break;
-// 			cases("engine_hours")
-// 				res.engine_hours = p.int_value;
-// 				break;
-// 			cases("flex_fuel1")
-// 				res.flex_fuel1 = p.int_value;
-// 				break;
-// 			cases("can_fuel_level")
-// 				res.can_fuel_level = p.int_value;
-// 				break;
-// 			cases("engine_rpm")
-// 				res.engine_rpm = p.int_value;
-// 				break;
-// 			cases("engine_coolant_temp")
-// 				res.engine_coolant_temp = p.int_value;
-// 				break;
-// 			cases("accel_pedal_pos")
-// 				res.accel_pedal_pos = p.int_value;
-// 				break;
-// 			cases("can_speed")
-// 				res.can_speed = p.int_value;
-// 				break;
-// 			cases("pdop")
-// 				res.pdop = p.int_value;
-// 				break;
-// 			cases("fuel_temp101")
-// 				res.fuel_temp101 = p.int_value;
-// 				break;
-// 			cases("param1")
-// 				res.param1 = p.int_value;
-// 				break;						
-// 			cases("param16")
-// 				res.param16 = p.int_value;
-// 				break;
-// 			cases("param17")
-// 				res.param17 = p.int_value;
-// 				break;
-// 			cases("param18")
-// 				res.param18 = p.int_value;
-// 				break;
-// 			cases("param65")
-// 				res.param65 = p.int_value;
-// 				break;
-// 			cases("sats_gps")
-// 				res.sats_gps = p.int_value;
-// 				break;
-// 			cases("sats_glonass")
-// 				res.sats_glonass = p.int_value;
-// 				break;
-// 			cases("mcc1")
-// 				res.mcc1 = p.int_value;
-// 				break;
-// 			cases("lac1")
-// 				res.lac1 = p.int_value;
-// 				break;
-// 			cases("cell1")
-// 				res.cell1 = p.int_value;
-// 				break;
-// 			cases("rx1")
-// 				res.rx1 = p.int_value;
-// 				break;
-// 			cases("ta1")
-// 				res.ta1 = p.int_value;
-// 				break;
-// 			cases("can33")
-// 				res.can33 = p.int_value;
-// 				break;
-// 			cases("can37")
-// 				res.can37 = p.int_value;
-// 				break;
-// 			cases("can38")
-// 				res.can38 = p.int_value;
-// 				break;
-// 			cases("can39")
-// 				res.can39 = p.int_value;
-// 				break;
-// 			cases("can40")
-// 				res.can40 = p.int_value;
-// 				break;
-// 			cases("can41")
-// 				res.can41 = p.int_value;
-// 				break;
-// 			cases("can42")
-// 				res.can42 = p.int_value;
-// 				break;
-// 			cases("can43")
-// 				res.can43 = p.int_value;
-// 				break;
-// 			cases("can_fuel_consumpt")
-// 				res.can_fuel_consumpt = p.d_value;
-// 				break;
-// 			cases("can_mileage")
-// 				res.can_mileage = p.d_value;
-// 				break;						
-// 			cases("mileage")
-// 				res.mileage = p.d_value;
-// 				break;
-// 			cases("adc0")
-// 				res.adc0 = p.d_value;
-// 				break;
-// 			cases("adc1")
-// 				res.adc1 = p.d_value;
-// 				break;
-// 			cases("param9")
-// 				res.param9 = p.d_value;
-// 				break;
-// 			cases("param64")
-// 				res.param64 = p.d_value;
-// 				break;
-// 			cases("can34")
-// 				res.can34 = p.d_value;
-// 				break;
-// 			cases("can35")
-// 				res.can35 = p.d_value;
-// 				break;
-// 			cases("can36")
-// 				res.can36 = p.d_value;
-// 				break;
-// 			cases("acc_x")
-// 				res.acc_x = p.int_value;
-// 				break;
-// 			cases("acc_y")
-// 				res.acc_y = p.int_value;
-// 				break;
-// 			cases("acc_z")
-// 				res.acc_z = p.int_value;
-// 				break;
-// 			cases("rssi")
-// 				res.rssi = p.int_value;
-// 				break;
-// 			cases("odometer")
-// 				res.odometer = p.int_value;
-// 				break;
-// 			cases("bootcount")
-// 				res.bootcount = p.int_value;
-// 				break;
-// 			defaults
-// 				//printf("No match\n");
-// 				break;
-// 		} switchs_end;
-// 	}
-// 	return res;
-// }
+typedef union
+{
+    struct {
+        uint8_t SOFT;       // 1
+        uint16_t GPS_PNTR;  // 2
+        uint16_t STATUS;    // 2
+        float LAT;          // 4
+        float LON;          // 4
+        uint16_t COURSE;    // 2
+        uint16_t SPEED;     // 2
+        uint8_t ACC;        // 1
+        uint16_t HEIGHT;    // 2
+        uint8_t HDOP;       // 1
+        uint8_t SAT_COUNT;  // 1
+        uint32_t DATE_TIME; // 4
+        uint16_t V_POWER;   // 2
+        uint16_t V_BATTERY; // 2
+    } msg;
+    uint8_t bytes[30];
+} _unionAdm6;
 
 
+
+
+
+
+typedef struct {
+    uint8_t VIB;        // 1
+    uint8_t VIB_COUNT;  // 1
+    uint8_t OUT;        // 1
+    uint8_t IN_ALARM;   // 1
+} _accMessage;
+typedef union
+{
+    _accMessage msg;
+    char bytes[4];
+} _unionAccMessage;
+
+typedef struct {
+    uint16_t IN_A0;     // 2
+    uint16_t IN_A1;     // 2
+    uint16_t IN_A2;     // 2
+    uint16_t IN_A3;     // 2
+    uint16_t IN_A4;     // 2
+    uint16_t IN_A5;     // 2
+} _analogMessage;
+typedef union
+{
+    _analogMessage msg;
+    char bytes[12];
+} _unionAnalogMessage;
+
+typedef struct {
+    uint32_t IN_D0;     // 4
+    uint32_t IN_D1;     // 4
+} _digitalMessage;
+typedef union
+{
+    _digitalMessage msg;
+    char bytes[8];
+} _unionDigitalMessage;
+
+typedef struct {
+    uint16_t FUEL_LEVEL_0; // 2
+    uint16_t FUEL_LEVEL_1; // 2 
+    uint16_t FUEL_LEVEL_2; // 2
+    uint8_t TEMP_0;        // 1
+    uint8_t TEMP_1;        // 1
+    uint8_t TEMP_2;        // 1
+} _fuelTempMessage;
+typedef union
+{
+    _fuelTempMessage msg;
+    char bytes[9];
+} _unionFuelTempMessage;
+#pragma pack(pop)
+
+typedef struct {
+    bool reboot, numberSim, noConnection, secureMode, lowVoltage, validCoord, freezed, externalPower, alarm, AntError, shortCutAnt, \
+                    overVoltage, boxSd, coreDamage, aGsm, tangent;
+} _statusDef;
+
+
+typedef union
+{
+    struct {
+        bool reboot:1, numberSim:1, noConnection:1, secureMode:1, lowVoltage:1, validCoord:1, freezed:1, externalPower:1, alarm:1, AntError:1, shortCutAnt:1, \
+                    overVoltage:1, boxSd:1, coreDamage:1, aGsm:1, tangent:1;
+    } statuses;
+    uint16_t word;
+} _unionStatus;
+
+char *imei;
 
 /*
    decode function
@@ -328,9 +153,200 @@ void terminal_decode(char *parcel, int parcel_size, ST_ANSWER *answer, ST_WORKER
 {
 	ST_RECORD *record = NULL;
 
-	logging("terminal_decode[%s:%d]: SIZE: %d  ANSWER: %s\n", worker->listener->name, worker->listener->port, parcel_size, parcel);
+    
+    char hwType[32];
+    memset(hwType, 0x00, sizeof(hwType));
+
+    char ipAddress[16];
+    memset(ipAddress, 0, sizeof(ipAddress));
+    strcpy(ipAddress, worker->ip);
+
+    uint8_t canTagBytes[1024];
+    uint8_t canTagLength;
+    uint8_t NUM_CAN_TAG_X;
+    uint64_t DATA_CAN_TAG_X;
+
+    uint32_t odometr;
+
+    uint8_t satCountGPS;
+    uint8_t satCountGlonass;
+
+    bool getAccMessage = false;
+    bool getAnalogInputsMessage = false;
+    bool getDiscretInputsMessage = false;
+    bool getFuelAndTempMessage = false;
+    bool getCanDataMessage = false;
+    bool getVirtOdoMessage = false;
 
 
+    char *cerror, lib_path[FILENAME_MAX];
+    memset(lib_path, 0, FILENAME_MAX);
+    snprintf(lib_path, FILENAME_MAX, "%.4060s/%.30s.so", stParams.start_path, stConfigServer.db_type);
+
+    static void *db_library_handle = NULL;
+    void *(*db_writeImeiAndIpToDb)(char *imei, char *ip); // pointer to database thread function
+    char *(*db_getImeiOfIpInDb)(char *ip); // pointer to database thread function
+    db_library_handle = dlopen(lib_path, RTLD_LAZY);
+    if( !db_library_handle ) {
+        logging("database_setup: dlopen(%s) error: %s\n", lib_path, dlerror());
+        return 0;
+    }
+
+    // get pointer to database thread function
+    dlerror();	// Clear any existing error
+    db_writeImeiAndIpToDb = dlsym(db_library_handle, "writeImeiAndIpToDb");
+    db_getImeiOfIpInDb = dlsym(db_library_handle, "getImeiOfIpInDb");
+    
+
+
+   /* printf("Readed bytes\n");
+    for (int i = 0; i < parcel_size; i++)
+    {
+        printf("%02X ", parcel[i] );
+    }
+    printf("\n");*/
+
+    _unionHead head;
+    memcpy(head.bytes, parcel, sizeof(head.bytes));
+    
+    if (head.msg.TYPE == 0x03)
+    {
+        _unionImeiMessage imeiMessage;
+        parcel = parcel + 4;
+        memcpy(imeiMessage.bytes, parcel, head.msg.SIZE - 4);
+
+        if (imeiMessage.msg.HW_TYPE == 0x05) sprintf(hwType, "ADM600");
+        else if (imeiMessage.msg.HW_TYPE == 0x0A) sprintf(hwType, "ADM300");
+        else if (imeiMessage.msg.HW_TYPE == 0x0B) sprintf(hwType, "ADM100");
+        else if (imeiMessage.msg.HW_TYPE == 0x00) sprintf(hwType, "ADM50");
+
+        db_writeImeiAndIpToDb(imeiMessage.msg.IMEI, ipAddress);
+
+        logging("terminal_decode[%s:%s:%d]: IMEI MSG: SIZE: %d DEV_ID: %X REPLY_EN: %X HW_TYPE: %s IMEI: %s\n", worker->listener->name, ipAddress, worker->listener->port, \
+                                                                                        head.msg.SIZE, head.msg.DEVICE_ID, imeiMessage.msg.REPLY_ENABLED, hwType, imeiMessage.msg.IMEI);
+        return;
+    }
+
+    if (head.msg.TYPE == 0x0A)
+    {
+        imei = db_getImeiOfIpInDb(ipAddress);
+        logging("terminal_decode[%s:%s:%d]: IMEI: %s  Photo MSG: SIZE: %d \n", worker->listener->name, ipAddress, worker->listener->port, imei, head.msg.SIZE);
+        return;
+    }
+
+    if (head.msg.TYPE == 0x01)
+    {
+        imei = db_getImeiOfIpInDb(ipAddress);
+        logging("terminal_decode[%s:%s:%d]: IMEI: %s  ADM-5 MSG: SIZE: %d \n", worker->listener->name, ipAddress, worker->listener->port, imei, head.msg.SIZE);
+        return;
+    }
+
+    
+    _unionAdm6 dataMessage;
+    parcel = parcel + 4;
+    memset(dataMessage.bytes, 0x00, sizeof(dataMessage.bytes));
+    memcpy(dataMessage.bytes, parcel, sizeof(dataMessage.bytes));  
+
+    _unionStatus status;
+    status.word = dataMessage.msg.STATUS;
+
+    imei = db_getImeiOfIpInDb(ipAddress);
+    
+    logging("terminal_decode[%s:%s:%d]: IMEI: %s  DEV_ID: %X  MSG_SIZE: %d  LAT: %f   LON: %f TIME: %u\n", worker->listener->name, ipAddress, worker->listener->port, imei, head.msg.DEVICE_ID, \
+                                                                                        head.msg.SIZE, dataMessage.msg.LAT, dataMessage.msg.LON, dataMessage.msg.DATE_TIME);  
+
+    logging("terminal_decode[%s:%d]: STATUS: reboot:%d, numberSim:%d, noConnection:%d, secureMode:%d, lowVoltage:%d, validCoord:%d, freezed:%d, externalPower:%d, \
+                alarm:%d, AntError:%d, shortCutAnt:%d, overVoltage:%d, boxSd:%d, coreDamage:%d, aGsm:%d, tangent:%d\n", worker->listener->name, worker->listener->port, \
+                status.statuses.reboot, status.statuses.numberSim, status.statuses.noConnection, status.statuses.secureMode, status.statuses.lowVoltage, \
+                status.statuses.validCoord, status.statuses.freezed, status.statuses.externalPower, status.statuses.alarm, status.statuses.AntError, \
+                status.statuses.shortCutAnt, status.statuses.overVoltage, status.statuses.boxSd, status.statuses.coreDamage, status.statuses.aGsm, status.statuses.tangent);      
+
+    
+    _unionAccMessage accMessage;
+    _unionAnalogMessage analogMessage;
+    _unionDigitalMessage digitalMessage;
+    _unionFuelTempMessage fuelTempMessage;
+    int incBytes = 28;
+    if (head.msg.TYPE & 0x04)
+    {
+        parcel = parcel + incBytes;
+        memcpy(accMessage.bytes, parcel, sizeof(accMessage.bytes));
+        incBytes = sizeof(accMessage.bytes);
+        getAccMessage = true;
+    }
+    if (head.msg.TYPE & 0x08)
+    {
+        parcel = parcel + incBytes;
+        memcpy(analogMessage.bytes, parcel, sizeof(analogMessage.bytes));
+        incBytes = sizeof(analogMessage.bytes);
+        getAnalogInputsMessage = true;
+    }
+    if (head.msg.TYPE & 0x10)
+    {
+        parcel = parcel + incBytes;
+        memcpy(digitalMessage.bytes, parcel, sizeof(digitalMessage.bytes));
+        incBytes = sizeof(digitalMessage.bytes);
+        getDiscretInputsMessage = true;
+    }
+    if (head.msg.TYPE & 0x20)
+    {
+        parcel = parcel + incBytes;
+        memcpy(fuelTempMessage.bytes, parcel, sizeof(fuelTempMessage.bytes));
+        incBytes = sizeof(fuelTempMessage.bytes);
+        getFuelAndTempMessage = true;
+    }
+    if (head.msg.TYPE & 0x40)
+    {
+        parcel = parcel + incBytes;
+        canTagLength = parcel[0];
+        if (canTagLength > sizeof(canTagBytes)) canTagLength = sizeof(canTagBytes);
+        memcpy(canTagBytes, parcel, canTagLength);
+        incBytes = canTagLength;
+        getCanDataMessage = true;
+    }
+    if (head.msg.TYPE & 0x80)
+    {
+        parcel = parcel + incBytes;
+        char msg[4];
+        memcpy(msg, parcel, sizeof(msg));
+        sscanf(msg, "%d", &odometr);
+        getVirtOdoMessage = true;
+    }      
+
+    satCountGPS = dataMessage.msg.SAT_COUNT & 0x0F;
+    satCountGlonass = dataMessage.msg.SAT_COUNT & 0xF0 >> 4;
+
+    if ( answer->count < MAX_RECORDS - 1 )
+        answer->count++;
+    record = &answer->records[answer->count - 1];
+    record->lat = (double)dataMessage.msg.LAT;
+    record->clat = 'E';
+    record->lon = (double)dataMessage.msg.LON;
+    record->clon = 'N';
+    memcpy(record->ip, ipAddress, sizeof(record->ip));
+    memcpy(record->imei, imei, sizeof(record->imei));
+    record->dev_id = (unsigned int) head.msg.DEVICE_ID;
+    record->height = (int)dataMessage.msg.HEIGHT;
+    record->speed = (double)dataMessage.msg.SPEED*0.1;
+    record->curs = (unsigned int)dataMessage.msg.COURSE*0.1;
+    record->hdop = (unsigned int)dataMessage.msg.HDOP*0.1;
+    record->data = (time_t)dataMessage.msg.DATE_TIME;
+    record->vbatt = (double)dataMessage.msg.V_BATTERY;
+    record->vbort = (double)dataMessage.msg.V_POWER;
+    record->status = (int)dataMessage.msg.STATUS;
+    record->satellites = (unsigned int)satCountGPS;
+    sprintf(record->soft, "%u", dataMessage.msg.SOFT);
+    record->gpsPntr = (unsigned int)dataMessage.msg.GPS_PNTR;
+    record->acc = (unsigned int)dataMessage.msg.ACC;
+    if (getFuelAndTempMessage)
+    {
+        record->temperature = (int)fuelTempMessage.msg.TEMP_0;
+        record->fuel[0] = (int)fuelTempMessage.msg.FUEL_LEVEL_0;
+        record->fuel[1] = (int)fuelTempMessage.msg.FUEL_LEVEL_1;
+        
+    }
+    if (getVirtOdoMessage) record->probeg = (double)odometr;
+    record->type_protocol = (unsigned int)3;
 }   // terminal_decode
 //------------------------------------------------------------------------------
 

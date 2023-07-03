@@ -329,6 +329,7 @@ AllParams GetAllParams(DataS* pr, int cnt)
 void terminal_decode(char *parcel, int parcel_size, ST_ANSWER *answer, ST_WORKER *worker)
 {
 	ST_RECORD *record = NULL;
+	
 	char cTime[10], cDate[10], cLon, cLat, *cRec, *cRec1, adc[2048], any[2048];
 	struct tm tm_data;
 	time_t ulliTmp;
@@ -336,8 +337,9 @@ void terminal_decode(char *parcel, int parcel_size, ST_ANSWER *answer, ST_WORKER
 	int iAnswerSize, iFields, iTemp, iCurs = 0, iSatellits = 0, iSpeed = 0, iReadedRecords = 0, iBut = 0;
 	unsigned int iInputs = 0, iOutputs = 0;
 
-	int rsrv1, rsrv2, rsrv3;
-	double rsrv4;
+	float rsrv1, rsrv2, rsrv3;
+	float rsrv4;
+	char rsrv5[32];
 
 	DataS ReadParams[32];
 	int cntPar;
@@ -439,6 +441,7 @@ void terminal_decode(char *parcel, int parcel_size, ST_ANSWER *answer, ST_WORKER
 					answer->count++;
 				record = &answer->records[answer->count - 1];
 
+				record->type_protocol = (unsigned int)2;
 				snprintf(record->tracker, SIZE_TRACKER_FIELD, "WIPS");
 				snprintf(record->hard, SIZE_TRACKER_FIELD, "%d", 1);
 				snprintf(record->soft, SIZE_TRACKER_FIELD, "%f", 1.1);
@@ -570,11 +573,12 @@ void terminal_decode(char *parcel, int parcel_size, ST_ANSWER *answer, ST_WORKER
 			
 			allParams = GetAllParams(ReadParams, cntPar);
 			//printf("%d    %f \n", otherParams.pwr_ext, otherParams.adc0);
-            if( iFields >= 8 ) {
+            if( iFields >= 0 ) {
 				if( answer->count < MAX_RECORDS - 1 )
 					answer->count++;
 				record = &answer->records[answer->count - 1];
 
+				record->type_protocol = (unsigned int)2;
 				snprintf(record->tracker, SIZE_TRACKER_FIELD, "WIPS");
 				snprintf(record->hard, SIZE_TRACKER_FIELD, "%d", 1);
 				snprintf(record->soft, SIZE_TRACKER_FIELD, "%f", 1.1);
@@ -607,6 +611,7 @@ void terminal_decode(char *parcel, int parcel_size, ST_ANSWER *answer, ST_WORKER
 
 				record->speed = iSpeed; // 7
 				record->curs = iCurs;   // 8
+				record->status = (unsigned int)allParams.status;
 
                 if( iFields >= 10 ) {
     				record->height = (int)dAltitude;    // 9
@@ -680,8 +685,9 @@ void terminal_decode(char *parcel, int parcel_size, ST_ANSWER *answer, ST_WORKER
 
 			while(cRec1) {
                 ++iReadedRecords;   // кол-во считанных сообщений
-				//                       1      2   3   4  5   6  7  8  9  10   11
-				iFields = sscanf(cRec1, "%[^;];%[^;];%lf;%c;%lf;%c;%d;%d;%lf;%d;%d;%d;%d;%lf;%s",
+
+				//                       1     2     3   4  5   6  7  8  9   10 11 12 13 14 15
+				iFields = sscanf(cRec1, "%[^;];%[^;];%lf;%c;%lf;%c;%d;%d;%lf;%d;%f;%f;%f;%f;%s",
 									cDate, // 1
 									cTime, // 2
 									&dLat, // 3
@@ -692,12 +698,15 @@ void terminal_decode(char *parcel, int parcel_size, ST_ANSWER *answer, ST_WORKER
 									&iCurs, // 8
 									&dAltitude, // 9
 									&iSatellits, // 10
-									&rsrv1, 
-									&rsrv2, 
-									&rsrv3,
-									&rsrv4,
-									any
+									&rsrv1, //11
+									&rsrv2, //12
+									&rsrv3, //13
+									&rsrv4, //14
+									&any
 								  );
+				cntPar = stringsplit(any, ';', &ReadParams);
+				memset(any, 0, sizeof(any));
+				memcpy(any, ReadParams[1].str, sizeof(any));
 				if (strlen(any) != 0)
 				{
 					cntPar = stringsplit(any, ',', &ReadParams);		
@@ -710,6 +719,7 @@ void terminal_decode(char *parcel, int parcel_size, ST_ANSWER *answer, ST_WORKER
 						answer->count++;
 					record = &answer->records[answer->count - 1];
 
+					record->type_protocol = (unsigned int)2;
 					snprintf(record->tracker, SIZE_TRACKER_FIELD, "WIPS");
 					snprintf(record->hard, SIZE_TRACKER_FIELD, "%d", 1);
 					snprintf(record->soft, SIZE_TRACKER_FIELD, "%f", 1.1);
@@ -743,6 +753,9 @@ void terminal_decode(char *parcel, int parcel_size, ST_ANSWER *answer, ST_WORKER
 					record->speed = iSpeed;
 					record->height = (int)dAltitude;
 					record->satellites = iSatellits;
+
+					printf("STATUS %d\n", allParams.status);
+					record->status = (unsigned int)allParams.status;
 
 					if( record->satellites > 2 && record->lat > 0.0 && record->lon > 0.0 )
 						record->valid = 1;

@@ -48,6 +48,9 @@ typedef struct {
     char clon;                  // longitude part (N/S)
     char clat;                  // latitude part (E/W)
     time_t data;                // GPS date
+    unsigned int type_protocol; // Type protocol 1 - egts, 2 - wialon, 3 - adm;
+    unsigned int dev_id; 
+
     unsigned int status;        // terminas status field (bits field)
     unsigned int recnum;        // number of record
     unsigned int time;          // GPS time (converting to seconds from 00:00:00 of day)
@@ -69,6 +72,9 @@ typedef struct {
     double vbort;               // car on-board voltage
     double vbatt;               // terminal battery voltage
     double probeg;              // terminal-calculated distance from prev. point
+    unsigned int gpsPntr;
+    unsigned int acc;
+
 
 
 
@@ -149,5 +155,11 @@ typedef struct {
     ST_RECORD lastpoint;             // last navigation data
 } ST_ANSWER;
 // sizeof(ST_ANSWER)=11056
+
+
+typedef struct {
+    char imei[15];
+    char ip[16];
+} _imeiIndexes;
 
 #endif
