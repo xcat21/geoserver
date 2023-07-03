@@ -49,6 +49,12 @@ arnavi5: arnavi5.c arnavi.h de.h logger.h
 	rm arnavi5.o
 
 # shared library for decode/encode Wialon IPS
+adm: adm.c de.h logger.h
+	$(CC) -c $(SOCFLAGS) $(OPTIMIZE) adm.c -o adm.o
+	$(CC) -shared -o adm.so adm.o
+	rm adm.o
+
+# shared library for decode/encode Wialon IPS
 wialonips: wialonips.c de.h logger.h
 	$(CC) -c $(SOCFLAGS) $(OPTIMIZE) wialonips.c -o wialonips.o
 	$(CC) -shared -o wialonips.so wialonips.o
@@ -121,7 +127,8 @@ oracle: oracle.c glonassd.h de.h logger.h
 	rm oracle.o
 
 # all
-all: $(PROJECT) galileo satlite wialonips gps103 soap egts arnavi arnavi5 favw fava tqgprs prototest pg rds oracle
+#all: $(PROJECT) galileo satlite wialonips gps103 soap egts arnavi arnavi5 favw fava tqgprs prototest pg rds oracle
+all: $(PROJECT) wialonips egts pg adm
 
 clean:
 	rm -f *.o

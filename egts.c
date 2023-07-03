@@ -39,6 +39,7 @@ void terminal_decode(char *parcel, int parcel_size, ST_ANSWER *answer, ST_WORKER
 	ST_RECORD *record = NULL;
     uint8_t service, result;
 
+
 	if( !parcel || parcel_size <= 0 || !answer )
 		return;
 
@@ -203,6 +204,7 @@ void terminal_decode(char *parcel, int parcel_size, ST_ANSWER *answer, ST_WORKER
 
                 // разбираем данные
                 record = &answer->records[answer->count];
+				record->type_protocol = (unsigned int)1;
 				if( Parse_EGTS_SR_POS_DATA( (EGTS_SR_POS_DATA_RECORD *)&parcel[parcel_pointer], record, answer, worker ) ) {
 					memcpy(&answer->lastpoint, record, sizeof(ST_RECORD));
     				if( answer->count < MAX_RECORDS - 1 )
@@ -737,6 +739,7 @@ int Parse_EGTS_SR_POS_DATA(EGTS_SR_POS_DATA_RECORD *posdata, ST_RECORD *record, 
 
 	ulliTmp = posdata->NTM + GMT_diff;	// UTC ->local
 	gmtime_r(&ulliTmp, &tm_data);           // local simple->local struct
+	record->type_protocol = (unsigned int)1;
 	// получаем время как число секунд от начала суток
 	record->time = 3600 * tm_data.tm_hour + 60 * tm_data.tm_min + tm_data.tm_sec;
 	// в tm_data обнуляем время

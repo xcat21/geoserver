@@ -16,25 +16,37 @@
 #include "de.h"     // ST_ANSWER
 #include "lib.h"    // MIN, MAX, BETWEEN, CRC, etc...
 #include "logger.h"
+#include "switchs.h"
 
 const int MAX_PAR = 128;
 
-struct DataS
+typedef struct 
 {
 	char str[1024];
-};
+} DataS;
 
-struct params
+typedef struct
 {
 	char   name[256];
 	int    type;
 	int    int_value;
 	double d_value;
 	char   txt_value[256];
-};
+} OtherParams;
 
 
-int stringsplit(char *str, char delim, struct DataS *lst)
+typedef struct 
+{
+	int pwr_ext, msg_number, event_code, status, modules_st, modules_st2, gsm, nav_rcvr_state, sat, engine_hours, flex_fuel1, can_fuel_level,\	
+	engine_rpm, engine_coolant_temp, accel_pedal_pos, can_speed, pdop, fuel_temp101, param1, param16, param17, param18, param65, sats_gps, 
+	sats_glonass, mcc1, mnc1, lac1, cell1, rx1, ta1, can33, can37, can38, can39, can40, can41, can42,can43, acc_x, acc_y, acc_z, rssi, odometer, bootcount;
+	double can_fuel_consumpt, can_mileage, mileage, adc0, adc1, param9, param64, can34, can35, can36;
+} AllParams;
+
+
+
+
+int stringsplit(char *str, char delim, DataS *lst)
 {
 	char buf[1024];
 	memset(buf,0,sizeof(buf));
@@ -49,14 +61,14 @@ int stringsplit(char *str, char delim, struct DataS *lst)
 		{
 			ok=1;
 			j = 0;
-			strcpy(&lst[parId].str, buf);
+			strncpy(&lst[parId].str, buf, sizeof(buf));
 			parId++;
 			memset(buf,0,sizeof(buf));
 		}
 		if (i + 1 == strlen(str))
 		{
 			if (ok==1) {
-				strcpy(&lst[parId].str, buf);
+				strncpy(&lst[parId].str, buf, sizeof(buf));
 				parId++;
 			}
 			memset(buf,0,sizeof(buf));
@@ -67,9 +79,9 @@ int stringsplit(char *str, char delim, struct DataS *lst)
 }
 
 
-struct params getParams(char *str)
+OtherParams getParams(char *str)
 {
-	struct params p;
+	OtherParams p;
 	char buf[256];
 	memset(buf,0,sizeof(buf));
 	int j = 0;
@@ -91,7 +103,7 @@ struct params getParams(char *str)
 				if (p.type == 0) 
 					sscanf(buf, "%d", &p.int_value);
 				else if (p.type == 1)
-					sscanf(buf, "%f", &p.d_value);
+					sscanf(buf, "%lf", &p.d_value);
 				else if (p.type == 2)
 					sscanf(buf, "%s", &p.txt_value);
 			}
@@ -110,7 +122,7 @@ struct params getParams(char *str)
 					if (p.type == 1) 
 						sscanf(buf, "%d", &p.int_value);
 					else if (p.type == 2)
-						sscanf(buf, "%f", &p.d_value);
+						sscanf(buf, "%lf", &p.d_value);
 					else if (p.type == 3)
 						sscanf(buf, "%s", &p.txt_value);
 				}
@@ -121,6 +133,189 @@ struct params getParams(char *str)
 		}
 	}
 	return p;
+}
+
+AllParams GetAllParams(DataS* pr, int cnt)
+{
+	AllParams res;
+	memset(&res,0,sizeof(OtherParams));
+	for (int j = 0; j < cnt; j++)
+	{
+		OtherParams p = getParams(pr[j].str);
+		/*printf("name: %s\n", p.name);
+		printf("type: %d\n", p.type);
+		if (p.type == 1) printf("value: %d\n", p.int_value);
+		else if (p.type == 2) printf("value: %f\n", p.d_value);
+		else if (p.type == 3) printf("value: %s\n", p.txt_value);*/
+		switchs(p.name) {
+			cases("pwr_ext")
+				res.pwr_ext = p.int_value;				
+				break;
+			cases("msg_number")
+				res.msg_number = p.int_value;
+				break;
+			cases("event_code")
+				res.event_code = p.int_value;
+				break;
+			cases("status")
+				res.status = p.int_value;
+				break;
+			cases("modules_st")
+				res.modules_st = p.int_value;
+				break;
+			cases("modules_st2")
+				res.modules_st2 = p.int_value;
+				break;
+			cases("gsm")
+				res.gsm = p.int_value;
+				break;					
+			cases("nav_rcvr_state")
+				res.nav_rcvr_state = p.int_value;
+				break;
+			cases("sat")
+				res.sat = p.int_value;
+				break;
+			cases("engine_hours")
+				res.engine_hours = p.int_value;
+				break;
+			cases("flex_fuel1")
+				res.flex_fuel1 = p.int_value;
+				break;
+			cases("can_fuel_level")
+				res.can_fuel_level = p.int_value;
+				break;
+			cases("engine_rpm")
+				res.engine_rpm = p.int_value;
+				break;
+			cases("engine_coolant_temp")
+				res.engine_coolant_temp = p.int_value;
+				break;
+			cases("accel_pedal_pos")
+				res.accel_pedal_pos = p.int_value;
+				break;
+			cases("can_speed")
+				res.can_speed = p.int_value;
+				break;
+			cases("pdop")
+				res.pdop = p.int_value;
+				break;
+			cases("fuel_temp101")
+				res.fuel_temp101 = p.int_value;
+				break;
+			cases("param1")
+				res.param1 = p.int_value;
+				break;						
+			cases("param16")
+				res.param16 = p.int_value;
+				break;
+			cases("param17")
+				res.param17 = p.int_value;
+				break;
+			cases("param18")
+				res.param18 = p.int_value;
+				break;
+			cases("param65")
+				res.param65 = p.int_value;
+				break;
+			cases("sats_gps")
+				res.sats_gps = p.int_value;
+				break;
+			cases("sats_glonass")
+				res.sats_glonass = p.int_value;
+				break;
+			cases("mcc1")
+				res.mcc1 = p.int_value;
+				break;
+			cases("lac1")
+				res.lac1 = p.int_value;
+				break;
+			cases("cell1")
+				res.cell1 = p.int_value;
+				break;
+			cases("rx1")
+				res.rx1 = p.int_value;
+				break;
+			cases("ta1")
+				res.ta1 = p.int_value;
+				break;
+			cases("can33")
+				res.can33 = p.int_value;
+				break;
+			cases("can37")
+				res.can37 = p.int_value;
+				break;
+			cases("can38")
+				res.can38 = p.int_value;
+				break;
+			cases("can39")
+				res.can39 = p.int_value;
+				break;
+			cases("can40")
+				res.can40 = p.int_value;
+				break;
+			cases("can41")
+				res.can41 = p.int_value;
+				break;
+			cases("can42")
+				res.can42 = p.int_value;
+				break;
+			cases("can43")
+				res.can43 = p.int_value;
+				break;
+			cases("can_fuel_consumpt")
+				res.can_fuel_consumpt = p.d_value;
+				break;
+			cases("can_mileage")
+				res.can_mileage = p.d_value;
+				break;						
+			cases("mileage")
+				res.mileage = p.d_value;
+				break;
+			cases("adc0")
+				res.adc0 = p.d_value;
+				break;
+			cases("adc1")
+				res.adc1 = p.d_value;
+				break;
+			cases("param9")
+				res.param9 = p.d_value;
+				break;
+			cases("param64")
+				res.param64 = p.d_value;
+				break;
+			cases("can34")
+				res.can34 = p.d_value;
+				break;
+			cases("can35")
+				res.can35 = p.d_value;
+				break;
+			cases("can36")
+				res.can36 = p.d_value;
+				break;
+			cases("acc_x")
+				res.acc_x = p.int_value;
+				break;
+			cases("acc_y")
+				res.acc_y = p.int_value;
+				break;
+			cases("acc_z")
+				res.acc_z = p.int_value;
+				break;
+			cases("rssi")
+				res.rssi = p.int_value;
+				break;
+			cases("odometer")
+				res.odometer = p.int_value;
+				break;
+			cases("bootcount")
+				res.bootcount = p.int_value;
+				break;
+			defaults
+				//printf("No match\n");
+				break;
+		} switchs_end;
+	}
+	return res;
 }
 
 
@@ -134,12 +329,26 @@ struct params getParams(char *str)
 void terminal_decode(char *parcel, int parcel_size, ST_ANSWER *answer, ST_WORKER *worker)
 {
 	ST_RECORD *record = NULL;
+	
 	char cTime[10], cDate[10], cLon, cLat, *cRec, *cRec1, adc[2048], any[2048];
 	struct tm tm_data;
 	time_t ulliTmp;
-	double dLon, dLat, dAltitude, dHDOP;
-	int iAnswerSize, iFields, iTemp, iCurs, iSatellits, iSpeed, iReadedRecords = 0, iBut = 0;
+	double dLon = 0, dLat = 0, dAltitude = 0, dHDOP;
+	int iAnswerSize, iFields, iTemp, iCurs = 0, iSatellits = 0, iSpeed = 0, iReadedRecords = 0, iBut = 0;
 	unsigned int iInputs = 0, iOutputs = 0;
+
+	float rsrv1, rsrv2, rsrv3;
+	float rsrv4;
+	char rsrv5[32];
+
+	DataS ReadParams[32];
+	int cntPar;
+
+	// Parametrs
+	AllParams allParams;
+	
+
+
 	memset(any,0,sizeof(any));
 
     if( worker && worker->listener->log_all ){
@@ -232,6 +441,7 @@ void terminal_decode(char *parcel, int parcel_size, ST_ANSWER *answer, ST_WORKER
 					answer->count++;
 				record = &answer->records[answer->count - 1];
 
+				record->type_protocol = (unsigned int)2;
 				snprintf(record->tracker, SIZE_TRACKER_FIELD, "WIPS");
 				snprintf(record->hard, SIZE_TRACKER_FIELD, "%d", 1);
 				snprintf(record->soft, SIZE_TRACKER_FIELD, "%f", 1.1);
@@ -333,53 +543,42 @@ void terminal_decode(char *parcel, int parcel_size, ST_ANSWER *answer, ST_WORKER
 							  );
 			if (strlen(any) != 0)
 			{
-				printf("any:%s, %d\n", any, strlen(any));
-				struct DataS ReadData[MAX_PAR];
-				struct DataS ReadParams[MAX_PAR];
+				DataS ReadData[MAX_PAR];
 
 				int cnt_par = stringsplit(any, ';', &ReadData);
 				for (int i = 0; i < cnt_par; i++)
 				{
-					printf("cnt:%d %s\n", i, ReadData[i].str);
 					switch (i)
 					{
 						case 0: 
 						{
 							strncpy(adc, ReadData[i].str, sizeof(adc));
-							printf("ADC %s\n", adc);
 							break;
 						}
 						case 1:
 						{
 							if (strcmp(ReadData[i].str,"NA")) sscanf(ReadData[i].str, "%d", &iBut);
-							printf("iButton %d\n", iBut);
 							break;
 						}
 						default:
 						{
-							struct DataS ReadParams[32];
-							int cntPar = stringsplit(ReadData[i].str, ',', &ReadParams);
-							for (int j = 0; j < cntPar; j++)
-							{
-								struct params p = getParams(ReadParams[j].str);
-								printf("name: %s\n", p.name);
-								printf("type: %d\n", p.type);
-								if (p.type == 1) printf("value: %d\n", p.int_value);
-								else if (p.type == 2) printf("value: %f\n", p.d_value);
-								else if (p.type == 3) printf("value: %s\n", p.txt_value);
-							}
+							cntPar = stringsplit(ReadData[i].str, ',', &ReadParams);
 							break;
 						}
+						
 					}
 				}
 			}
 
 			
-            if( iFields >= 8 ) {
+			allParams = GetAllParams(ReadParams, cntPar);
+			//printf("%d    %f \n", otherParams.pwr_ext, otherParams.adc0);
+            if( iFields >= 0 ) {
 				if( answer->count < MAX_RECORDS - 1 )
 					answer->count++;
 				record = &answer->records[answer->count - 1];
 
+				record->type_protocol = (unsigned int)2;
 				snprintf(record->tracker, SIZE_TRACKER_FIELD, "WIPS");
 				snprintf(record->hard, SIZE_TRACKER_FIELD, "%d", 1);
 				snprintf(record->soft, SIZE_TRACKER_FIELD, "%f", 1.1);
@@ -412,6 +611,7 @@ void terminal_decode(char *parcel, int parcel_size, ST_ANSWER *answer, ST_WORKER
 
 				record->speed = iSpeed; // 7
 				record->curs = iCurs;   // 8
+				record->status = (unsigned int)allParams.status;
 
                 if( iFields >= 10 ) {
     				record->height = (int)dAltitude;    // 9
@@ -480,13 +680,14 @@ void terminal_decode(char *parcel, int parcel_size, ST_ANSWER *answer, ST_WORKER
                 // 2 ignore records without L (login) field
                 break;
             }
-
+			
 			cRec1 = strtok(&cRec[3], "|");
 
 			while(cRec1) {
                 ++iReadedRecords;   // кол-во считанных сообщений
-				//                       1      2   3   4  5   6  7  8  9  10   11
-				iFields = sscanf(cRec1, "%[^;];%[^;];%lf;%c;%lf;%c;%d;%d;%lf;%d;%*[^|]",
+
+				//                       1     2     3   4  5   6  7  8  9   10 11 12 13 14 15
+				iFields = sscanf(cRec1, "%[^;];%[^;];%lf;%c;%lf;%c;%d;%d;%lf;%d;%f;%f;%f;%f;%s",
 									cDate, // 1
 									cTime, // 2
 									&dLat, // 3
@@ -496,15 +697,29 @@ void terminal_decode(char *parcel, int parcel_size, ST_ANSWER *answer, ST_WORKER
 									&iSpeed, // 7
 									&iCurs, // 8
 									&dAltitude, // 9
-									&iSatellits // 10
+									&iSatellits, // 10
+									&rsrv1, //11
+									&rsrv2, //12
+									&rsrv3, //13
+									&rsrv4, //14
+									&any
 								  );
+				cntPar = stringsplit(any, ';', &ReadParams);
+				memset(any, 0, sizeof(any));
+				memcpy(any, ReadParams[1].str, sizeof(any));
+				if (strlen(any) != 0)
+				{
+					cntPar = stringsplit(any, ',', &ReadParams);		
+					allParams = GetAllParams(ReadParams, cntPar);
+				}
 
-				if( iFields >= 10 ) {	// успешно считаны все поля
+				if( iFields >= 0 ) {	// успешно считаны все поля
 
 					if( answer->count < MAX_RECORDS - 1 )
 						answer->count++;
 					record = &answer->records[answer->count - 1];
 
+					record->type_protocol = (unsigned int)2;
 					snprintf(record->tracker, SIZE_TRACKER_FIELD, "WIPS");
 					snprintf(record->hard, SIZE_TRACKER_FIELD, "%d", 1);
 					snprintf(record->soft, SIZE_TRACKER_FIELD, "%f", 1.1);
@@ -538,6 +753,9 @@ void terminal_decode(char *parcel, int parcel_size, ST_ANSWER *answer, ST_WORKER
 					record->speed = iSpeed;
 					record->height = (int)dAltitude;
 					record->satellites = iSatellits;
+
+					printf("STATUS %d\n", allParams.status);
+					record->status = (unsigned int)allParams.status;
 
 					if( record->satellites > 2 && record->lat > 0.0 && record->lon > 0.0 )
 						record->valid = 1;

@@ -32,7 +32,13 @@ INSERT INTO gps.tgpsdata (
 	nprobeg,        --$31
 	nzaj,
 	nalarm,         --$33
-    cmessage
+    cmessage,
+	protocol,
+	dev_id,
+	IP,
+	nsoft,
+	gps_pntr,
+	nacc
 ) VALUES (
 	to_timestamp($1::bigint),
 	$2::integer,
@@ -52,7 +58,7 @@ INSERT INTO gps.tgpsdata (
 	$16::real,
 	$17::real,
 	$18::real,
-	$19: bigint,
+	$19:: bigint,
 	$20::bigint,
 	$21::real,
 	$22::real,
@@ -67,5 +73,11 @@ INSERT INTO gps.tgpsdata (
 	$31::real,
 	$32::integer,
 	$33::integer,
-	$34::varchar
+	$34::varchar,
+	$35::integer,
+	$36::integer,
+	$37::inet,
+	$38::varchar,
+	$39::integer,
+	$40::integer
 );

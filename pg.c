@@ -62,13 +62,16 @@
 #include <semaphore.h>
 #include <sys/resource.h>	/* setrlimit */
 #include <libpq-fe.h>
+#include <stdbool.h>
 #include "glonassd.h"
 #include "de.h"
 #include "logger.h"
 
 // Definitions
 #define MAX_SQL_SIZE 4096
-#define INSERT_PARAMS_COUNT 34
+#define INSERT_PARAMS_COUNT 40
+
+static __thread PGconn *db_connection = NULL;
 
 // Locals
 // params for inserting sql
@@ -106,7 +109,13 @@ static __thread char *paramValues[INSERT_PARAMS_COUNT]= {
 	(char*)1,
 	(char*)1,
 	(char*)1,
-	(char*)1    // 34
+	(char*)1,    // 34
+	(char*)1,
+	(char*)1,
+	(char*)1,
+	(char*)1,
+	(char*)1,
+	(char*)1
 };
 
 /*
@@ -274,6 +283,14 @@ static int write_data_to_db(PGconn *connection, char *msg, char *sql_insert_poin
 	snprintf(paramValues[31], SIZE_TRACKER_FIELD, "%d", record->zaj);
 	snprintf(paramValues[32], SIZE_TRACKER_FIELD, "%d", record->alarm);            // $33
 	snprintf(paramValues[33], SIZE_MESSAGE_FIELD, "%s", record->message);		   // $34
+	snprintf(paramValues[34], SIZE_MESSAGE_FIELD, "%u", record->type_protocol);	   // $35
+	snprintf(paramValues[35], SIZE_MESSAGE_FIELD, "%u", record->dev_id);	       // $36
+	snprintf(paramValues[36], SIZE_MESSAGE_FIELD, "%s", record->ip);	           // $37
+	snprintf(paramValues[37], SIZE_MESSAGE_FIELD, "%s", record->soft);	           // $38
+	snprintf(paramValues[38], SIZE_MESSAGE_FIELD, "%u", record->gpsPntr);	       // $39
+	snprintf(paramValues[39], SIZE_MESSAGE_FIELD, "%u", record->acc);	           // $40
+
+
 
 	res = PQexecParams(connection,          // PGconn *conn,
                         sql_insert_point,      // const char *command,
@@ -293,9 +310,221 @@ static int write_data_to_db(PGconn *connection, char *msg, char *sql_insert_poin
 		logging("database thread[%ld]: PQexecParams() error: %s\n", syscall(SYS_gettid), PQerrorMessage(connection));
 		return 0;
 	}
+	return 1;
 }
 //------------------------------------------------------------------------------
 
+
+char *resFindIpOfImeiInDb(PGconn *connection, char *sql_select_point)
+{
+	char *ip = malloc(16);
+	PGresult *res;
+	ExecStatusType pqstatus;
+
+	if( !connection || !sql_select_point )
+		return ip;
+
+	res = PQexec(connection, sql_select_point);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK) {
+        PQclear(res);
+		db_connect(0, &db_connection);
+		return ip;
+    }
+
+	int cntIps = PQntuples(res);
+
+	for(int i=0; i<cntIps; i++) {
+		ip = PQgetvalue(res, i, 0);
+    }    
+	return ip;
+}
+
+char *resFindImeiOfIpInDb(PGconn *connection, char *sql_select_point)
+{
+	char *imei = malloc(16);
+	PGresult *res;
+	ExecStatusType pqstatus;
+
+	if( !connection || !sql_select_point )
+		return imei;
+
+	res = PQexec(connection, sql_select_point);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK) {
+        PQclear(res);
+		db_connect(0, &db_connection);
+		return imei;
+    }    
+
+	int cntIps = PQntuples(res);
+
+	for(int i=0; i<cntIps; i++) {
+		imei = PQgetvalue(res, i, 0);      
+    }    
+	return imei;
+}
+
+
+char *getIpOfImeiInDb(char *imei)
+{
+	char *ip = malloc(16);
+	memset(ip, 0, sizeof(ip) + 1);
+	char cmd[1024];
+	memset(cmd, 0, sizeof(cmd));
+	sprintf(cmd, "SELECT ip from gps.ipimei where imei = '%s'", imei);
+	db_connect(2, &db_connection);
+	if( PQstatus(db_connection) == CONNECTION_OK ) {		
+		return resFindIpOfImeiInDb(db_connection, cmd);
+	} else return ip;
+}
+
+char *getImeiOfIpInDb(char *ip)
+{
+	char *imei = malloc(16);
+
+	char cmd[1024];
+	memset(cmd, 0, sizeof(cmd));
+	sprintf(cmd, "SELECT imei from gps.ipimei where ip = '%s'", ip);
+	db_connect(2, &db_connection);
+	if( PQstatus(db_connection) == CONNECTION_OK ) {		
+		return resFindImeiOfIpInDb(db_connection, cmd);
+	} else return imei;
+}
+
+bool addImeiAndIpInDb(char *imei, char *ip)
+{
+	PGresult *res;	
+	ExecStatusType pqstatus;
+	char cmd[1024];
+	char *paramValues[4];
+	paramValues[0] = imei;
+	paramValues[1] = ip;
+	time_t t = time(NULL);
+  	struct tm tm = *localtime(&t);
+	char currentDateTimeStr[256];
+  	sprintf(currentDateTimeStr, "%d-%02d-%02d %02d:%02d:%02d\n", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+	paramValues[2] = currentDateTimeStr;
+	paramValues[3] = currentDateTimeStr;
+
+	memset(cmd, 0, sizeof(cmd));
+	sprintf(cmd, "INSERT INTO gps.ipimei (imei, ip, created_at, updated_at) VALUES ($1, $2, $3, $4)");
+	db_connect(2, &db_connection);
+	if( PQstatus(db_connection) == CONNECTION_OK ) {
+		res = PQexecParams(db_connection,          // PGconn *conn,
+                        cmd,      // const char *command,
+                        4,   // int nParams,
+                        NULL,                  // const Oid *paramTypes
+                        (const char* const*)paramValues,
+                        NULL,                  // const int *paramLengths,
+                        NULL,                  // const int *paramFormats,
+                        1);                    // int resultFormat: 1-ask for binary results
+
+		pqstatus = PQresultStatus(res);
+		PQclear(res);
+
+		if( pqstatus == PGRES_COMMAND_OK )
+		{
+			return true;
+		}
+		else {
+			logging("addImeiAndIpInDb() error: %s\n", PQerrorMessage(db_connection));
+			return false;
+		}
+	} else { printf("Error connect\n"); return false; }
+}
+
+bool updateImeiAndIpInDb(char *imei, char *ip)
+{
+	PGresult *res;	
+	ExecStatusType pqstatus;
+	char cmd[1024];
+	char updatedTime[256];
+	time_t t = time(NULL);
+  	struct tm tm = *localtime(&t);
+  	sprintf(updatedTime, "%d-%02d-%02d %02d:%02d:%02d\n", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+
+	memset(cmd, 0, sizeof(cmd));
+	sprintf(cmd, "UPDATE gps.ipimei SET ip = '%s', updated_at = '%s' WHERE imei='%s'", ip, updatedTime, imei);
+	db_connect(2, &db_connection);
+	if( PQstatus(db_connection) == CONNECTION_OK ) {
+		res = PQexec(db_connection, cmd);
+		
+		pqstatus = PQresultStatus(res);
+		PQclear(res);
+
+		if( pqstatus == PGRES_COMMAND_OK )
+		{
+			return true;
+		}
+		else {
+			logging("updateImeiAndIpInDb() error: %s\n", PQerrorMessage(db_connection));
+			return false;
+		}
+	} else { printf("Error connect\n"); return false; }
+}
+
+
+bool updateTimeInDb(char *imei)
+{
+	PGresult *res;	
+	ExecStatusType pqstatus;
+	char cmd[1024];
+	char updatedTime[256];
+	time_t t = time(NULL);
+  	struct tm tm = *localtime(&t);
+  	sprintf(updatedTime, "%d-%02d-%02d %02d:%02d:%02d\n", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+
+	memset(cmd, 0, sizeof(cmd));
+	sprintf(cmd, "UPDATE gps.ipimei SET updated_at = '%s' WHERE imei='%s'", updatedTime, imei);
+	db_connect(2, &db_connection);
+	if( PQstatus(db_connection) == CONNECTION_OK ) {
+		res = PQexec(db_connection, cmd);
+		
+		pqstatus = PQresultStatus(res);
+		PQclear(res);
+
+		if( pqstatus == PGRES_COMMAND_OK )
+		{
+			return true;
+		}
+		else {
+			logging("updateImeiAndIpInDb() error: %s\n", PQerrorMessage(db_connection));
+			return false;
+		}
+	} else { printf("Error connect\n"); return false; }
+}
+
+
+
+
+void *writeImeiAndIpToDb(char *imei, char *ip)
+{
+	char *ipAddressOfImeiInDb = getIpOfImeiInDb(imei);
+	if (strcmp(ipAddressOfImeiInDb, "") == 0)
+	{
+		if (addImeiAndIpInDb(imei, ip))
+		{
+			logging("%s %s added to db\n", imei, ip);
+		}
+	} else
+	{
+		if (strcmp(ipAddressOfImeiInDb, ip) == 0)
+		{
+			if (updateTimeInDb(imei))
+			{
+				logging("%s updated DateTime in db\n", imei);
+			}
+		} else
+		{
+			if (updateImeiAndIpInDb(imei, ip))
+			{
+				logging("%s %s updated record in db\n", imei, ip);
+			}
+		}
+
+	}
+}
 
 
 /*
@@ -310,7 +539,7 @@ static int write_data_to_db(PGconn *connection, char *msg, char *sql_insert_poin
 */
 void *db_thread(void *arg)
 {
-	static __thread PGconn *db_connection = NULL;
+	//static __thread PGconn *db_connection = NULL;
 	static __thread char sql_insert_point[MAX_SQL_SIZE];	// text of inserting sql
 	static __thread char values[INSERT_PARAMS_COUNT * SIZE_TRACKER_FIELD];	// buffer for parameters values for sql
 	static __thread char msg_buf[SOCKET_BUF_SIZE];
@@ -323,7 +552,6 @@ void *db_thread(void *arg)
 
 	// error handler:
 	void exit_db(void * arg) {
-
 		// destroy queue
 		if( queue_workers != -1 ) {
 			// save messages from queue
@@ -428,7 +656,6 @@ void *db_thread(void *arg)
 	// wait messages
 	while( 1 ) {
 		pthread_testcancel();
-
 		if( PQstatus(db_connection) == CONNECTION_OK ) {
 			msg_size = mq_receive(queue_workers, msg_buf, buf_size, NULL);
 			if( msg_size > 0 )
@@ -460,7 +687,7 @@ void *timer_function(void *ptr)
 	static __thread const char *name = 0;
 	static __thread sem_t *semaphore = SEM_FAILED;
 	static __thread char sql[MAX_SQL_SIZE];
-	static __thread PGconn *db_connection = 0;
+	//static __thread PGconn *db_connection = 0;
 	static __thread PGresult *sql_result = 0;
 	static __thread ExecStatusType resultStatus = 0;
 

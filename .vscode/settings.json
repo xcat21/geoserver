@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "random": "cpp",
+        "limits": "cpp",
+        "algorithm": "cpp",
+        "switchs.h": "c"
+    }
+}
