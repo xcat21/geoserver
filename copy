@@ -1,0 +1,4 @@
+cp  ./wialonips.so /opt/glonassd/
+cp ./pg.so /opt/glonassd/
+cp ./egts.so /opt/glonassd/
+cp ./glonassd /opt/glonassd/
