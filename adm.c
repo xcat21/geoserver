@@ -220,7 +220,7 @@ void terminal_decode(char *parcel, int parcel_size, ST_ANSWER *answer, ST_WORKER
         else if (imeiMessage.msg.HW_TYPE == 0x0B) sprintf(hwType, "ADM100");
         else if (imeiMessage.msg.HW_TYPE == 0x00) sprintf(hwType, "ADM50");
 
-        db_writeImeiAndIpToDb(imeiMessage.msg.IMEI, ipAddress);
+        db_writeImeiAndIpToDb((char *) imeiMessage.msg.IMEI, ipAddress);
 
         logging("terminal_decode[%s:%s:%d]: IMEI MSG: SIZE: %d DEV_ID: %X REPLY_EN: %X HW_TYPE: %s IMEI: %s\n", worker->listener->name, ipAddress, worker->listener->port, \
                                                                                         head.msg.SIZE, head.msg.DEVICE_ID, imeiMessage.msg.REPLY_ENABLED, hwType, imeiMessage.msg.IMEI);

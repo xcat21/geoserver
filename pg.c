@@ -328,11 +328,17 @@ char *resFindIpOfImeiInDb(PGconn *connection, char *sql_select_point)
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK) {
         PQclear(res);
-		db_connect(0, &db_connection);
-		return ip;
-    }
+	db_connect(0, &db_connection);
+	return ip;
+        }
+
+//	db_connect(0, &db_connection);
 
 	int cntIps = PQntuples(res);
+
+	if (cntIps == 0) {
+	return "";
+	}
 
 	for(int i=0; i<cntIps; i++) {
 		ip = PQgetvalue(res, i, 0);
@@ -353,9 +359,11 @@ char *resFindImeiOfIpInDb(PGconn *connection, char *sql_select_point)
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK) {
         PQclear(res);
-		db_connect(0, &db_connection);
-		return imei;
-    }    
+	db_connect(0, &db_connection);
+	return imei;
+        }
+
+	db_connect(0, &db_connection);
 
 	int cntIps = PQntuples(res);
 
@@ -408,7 +416,7 @@ bool addImeiAndIpInDb(char *imei, char *ip)
 	paramValues[3] = currentDateTimeStr;
 
 	memset(cmd, 0, sizeof(cmd));
-	sprintf(cmd, "INSERT INTO gps.ipimei (imei, ip, created_at, updated_at) VALUES ($1, $2, $3, $4)");
+	sprintf(cmd, "INSERT INTO gps.ipimei (imei, ip, created_at, updated_at) VALUES ($1::varchar, $2::inet, $3, $4)");
 	db_connect(2, &db_connection);
 	if( PQstatus(db_connection) == CONNECTION_OK ) {
 		res = PQexecParams(db_connection,          // PGconn *conn,
@@ -455,6 +463,7 @@ bool updateImeiAndIpInDb(char *imei, char *ip)
 
 		if( pqstatus == PGRES_COMMAND_OK )
 		{
+			db_connect(0, &db_connection);
 			return true;
 		}
 		else {
@@ -486,6 +495,7 @@ bool updateTimeInDb(char *imei)
 
 		if( pqstatus == PGRES_COMMAND_OK )
 		{
+			db_connect(0, &db_connection);
 			return true;
 		}
 		else {
@@ -501,6 +511,7 @@ bool updateTimeInDb(char *imei)
 void *writeImeiAndIpToDb(char *imei, char *ip)
 {
 	char *ipAddressOfImeiInDb = getIpOfImeiInDb(imei);
+
 	if (strcmp(ipAddressOfImeiInDb, "") == 0)
 	{
 		if (addImeiAndIpInDb(imei, ip))
@@ -801,34 +812,34 @@ CREATE TABLE tgpsdata (
     nprobegc real
 );
 
-COMMENT ON TABLE tgpsdata IS 'Ð”Ð°Ð½Ð½Ñ‹Ðµ GPS';
-COMMENT ON COLUMN tgpsdata.dsysdata IS 'Ð¡Ð¸ÑÑ‚ÐµÐ¼Ð½Ð°Ñ (ÑÐµÑ€Ð²ÐµÑ€Ð½Ð°Ñ) Ð´Ð°Ñ‚Ð° Ð·Ð°Ð¿Ð¸ÑÐ¸';
-COMMENT ON COLUMN tgpsdata.ddata IS 'Ð”Ð°Ñ‚Ð° GPS';
-COMMENT ON COLUMN tgpsdata.ntime IS 'Ð’Ñ€ÐµÐ¼Ñ GPS Ð² ÑÐµÐºÑƒÐ½Ð´Ð°Ñ… Ð¾Ñ‚ Ð½Ð°Ñ‡Ð°Ð»Ð° ÑÑƒÑ‚Ð¾Ðº';
-COMMENT ON COLUMN tgpsdata.cimei IS 'IMEI Ð¸Ð»Ð¸ ID ÑƒÑÑ‚Ñ€Ð¾Ð¹ÑÑ‚Ð²Ð°';
-COMMENT ON COLUMN tgpsdata.nstatus IS 'Ð¡Ð¾ÑÑ‚Ð¾ÑÐ½Ð¸Ðµ ÑƒÑÑ‚Ñ€Ð¾Ð¹ÑÑ‚Ð²Ð° GPS';
-COMMENT ON COLUMN tgpsdata.nlongitude IS 'Ð”Ð¾Ð»Ð³Ð¾Ñ‚Ð° Ð² Ð´Ð¾Ð»ÑÑ… Ð³Ñ€Ð°Ð´ÑƒÑÐ¾Ð²';
-COMMENT ON COLUMN tgpsdata.cew IS 'Ð¤Ð»Ð°Ð³ Ð´Ð¾Ð»Ð³Ð¾Ñ‚Ñ‹ E/W';
-COMMENT ON COLUMN tgpsdata.nlatitude IS 'Ð¨Ð¸Ñ€Ð¾Ñ‚Ð° Ð² Ð´Ð¾Ð»ÑÑ… Ð³Ñ€Ð°Ð´ÑƒÑÐ¾Ð²';
-COMMENT ON COLUMN tgpsdata.cns IS 'Ð¤Ð»Ð°Ð³ ÑˆÐ¸Ñ€Ð¾Ñ‚Ñ‹ N/S';
-COMMENT ON COLUMN tgpsdata.naltitude IS 'Ð’Ñ‹ÑÐ¾Ñ‚Ð°, Ð¼ÐµÑ‚Ñ€Ñ‹';
-COMMENT ON COLUMN tgpsdata.nspeed IS 'Ð¡ÐºÐ¾Ñ€Ð¾ÑÑ‚ÑŒ, ÐºÐ¼/Ñ‡ (1Ð¼Ð¸Ð»Ñ = 1.852 km)';
-COMMENT ON COLUMN tgpsdata.nheading IS 'ÐÐ°Ð¿Ñ€Ð°Ð²Ð»ÐµÐ½Ð¸Ðµ Ð´Ð²Ð¸Ð¶ÐµÐ½Ð¸Ñ (Ð°Ð·Ð¸Ð¼ÑƒÑ‚)';
-COMMENT ON COLUMN tgpsdata.nsat IS 'ÐšÐ¾Ð»-Ð²Ð¾ ÑÐ¿ÑƒÑ‚Ð½Ð¸ÐºÐ¾Ð²';
-COMMENT ON COLUMN tgpsdata.nvalid IS '0-Ð¿Ð¾Ð´Ð¾Ð·Ñ€Ð¸Ñ‚ÐµÐ»ÑŒÐ½Ð°Ñ Ð·Ð°Ð¿Ð¸ÑÑŒ, 1-Ð½Ð¾Ñ€Ð¼Ð°';
-COMMENT ON COLUMN tgpsdata.nnum IS 'ÐŸÐ¾Ñ€ÑÐ´ÐºÐ¾Ð²Ñ‹Ð¹ â„– Ð¿Ð°ÐºÐµÑ‚Ð° GPS';
-COMMENT ON COLUMN tgpsdata.nvbort IS 'ÐÐ°Ð¿Ñ€ÑÐ¶ÐµÐ½Ð¸Ðµ Ð±Ð¾Ñ€Ñ‚Ð¾Ð²Ð¾Ðµ';
-COMMENT ON COLUMN tgpsdata.nvbat IS 'ÐÐ°Ð¿Ñ€ÑÐ¶ÐµÐ½Ð¸Ðµ Ð±Ð°Ñ‚Ð°Ñ€ÐµÐ¸ ÑƒÑÑ‚Ñ€Ð¾Ð¹ÑÑ‚Ð²Ð°';
-COMMENT ON COLUMN tgpsdata.ntmp IS 'Ð¢ÐµÐ¼Ð¿ÐµÑ€Ð°Ñ‚ÑƒÑ€Ð° ÑƒÑÑ‚Ñ€Ð¾Ð¹ÑÑ‚Ð²Ð°';
+COMMENT ON TABLE tgpsdata IS 'Äàííûå GPS';
+COMMENT ON COLUMN tgpsdata.dsysdata IS 'Ñèñòåìíàÿ (ñåðâåðíàÿ) äàòà çàïèñè';
+COMMENT ON COLUMN tgpsdata.ddata IS 'Äàòà GPS';
+COMMENT ON COLUMN tgpsdata.ntime IS 'Âðåìÿ GPS â ñåêóíäàõ îò íà÷àëà ñóòîê';
+COMMENT ON COLUMN tgpsdata.cimei IS 'IMEI èëè ID óñòðîéñòâà';
+COMMENT ON COLUMN tgpsdata.nstatus IS 'Ñîñòîÿíèå óñòðîéñòâà GPS';
+COMMENT ON COLUMN tgpsdata.nlongitude IS 'Äîëãîòà â äîëÿõ ãðàäóñîâ';
+COMMENT ON COLUMN tgpsdata.cew IS 'Ôëàã äîëãîòû E/W';
+COMMENT ON COLUMN tgpsdata.nlatitude IS 'Øèðîòà â äîëÿõ ãðàäóñîâ';
+COMMENT ON COLUMN tgpsdata.cns IS 'Ôëàã øèðîòû N/S';
+COMMENT ON COLUMN tgpsdata.naltitude IS 'Âûñîòà, ìåòðû';
+COMMENT ON COLUMN tgpsdata.nspeed IS 'Ñêîðîñòü, êì/÷ (1ìèëÿ = 1.852 km)';
+COMMENT ON COLUMN tgpsdata.nheading IS 'Íàïðàâëåíèå äâèæåíèÿ (àçèìóò)';
+COMMENT ON COLUMN tgpsdata.nsat IS 'Êîë-âî ñïóòíèêîâ';
+COMMENT ON COLUMN tgpsdata.nvalid IS '0-ïîäîçðèòåëüíàÿ çàïèñü, 1-íîðìà';
+COMMENT ON COLUMN tgpsdata.nnum IS 'Ïîðÿäêîâûé ¹ ïàêåòà GPS';
+COMMENT ON COLUMN tgpsdata.nvbort IS 'Íàïðÿæåíèå áîðòîâîå';
+COMMENT ON COLUMN tgpsdata.nvbat IS 'Íàïðÿæåíèå áàòàðåè óñòðîéñòâà';
+COMMENT ON COLUMN tgpsdata.ntmp IS 'Òåìïåðàòóðà óñòðîéñòâà';
 COMMENT ON COLUMN tgpsdata.nhdop IS 'HDOP';
-COMMENT ON COLUMN tgpsdata.nout IS 'Ð‘Ð¸Ñ‚Ð¾Ð²Ð¾Ðµ Ð¿Ð¾Ð»Ðµ ÑÐ¾ÑÑ‚Ð¾ÑÐ½Ð¸Ñ ÑƒÐ¿Ñ€Ð°Ð²Ð»ÑÑŽÑ‰Ð¸Ñ… ÐºÐ¾Ð½Ñ‚Ð°ÐºÑ‚Ð¾Ð² (Ð²Ñ‹Ñ…Ð¾Ð´Ð¾Ð²)';
-COMMENT ON COLUMN tgpsdata.ninp IS 'Ð‘Ð¸Ñ‚Ð¾Ð²Ð¾Ðµ Ð¿Ð¾Ð»Ðµ ÑÐ¾ÑÑ‚Ð¾ÑÐ½Ð¸Ñ Ð´Ð°Ñ‚Ñ‡Ð¸ÐºÐ¾Ð² (Ð²Ñ…Ð¾Ð´Ð¾Ð²)';
-COMMENT ON COLUMN tgpsdata.nin0 IS 'Ð¡Ð¾ÑÑ‚Ð¾ÑÐ½Ð¸Ðµ Ð´Ð°Ñ‚Ñ‡Ð¸ÐºÐ° (Ð²Ñ…Ð¾Ð´Ð°) â„– 1';
-COMMENT ON COLUMN tgpsdata.nfuel1 IS 'ÐŸÐ¾ÐºÐ°Ð·Ð°Ð½Ð¸Ñ Ð´Ð°Ñ‚Ñ‡Ð¸ÐºÐ° ÑƒÑ€Ð¾Ð²Ð½Ñ Ñ‚Ð¾Ð¿Ð»Ð¸Ð²Ð° â„– 1';
-COMMENT ON COLUMN tgpsdata.nprobeg IS 'ÐŸÑ€Ð¾Ð±ÐµÐ³, Ñ€Ð°ÑÑ‡Ð¸Ñ‚Ð°Ð½Ð½Ñ‹Ð¹ Ñ‚ÐµÑ€Ð¼Ð¸Ð½Ð°Ð»Ð¾Ð¼';
-COMMENT ON COLUMN tgpsdata.nzaj IS 'Ð¡Ð¾ÑÑ‚Ð¾ÑÐ½Ð¸Ðµ Ð·Ð°Ð¶Ð¸Ð³Ð°Ð½Ð¸Ñ';
-COMMENT ON COLUMN tgpsdata.nalarm IS 'Ð¡Ð¾ÑÑ‚Ð¾ÑÐ½Ð¸Ðµ ÐºÐ½Ð¾Ð¿ÐºÐ¸ Ñ‚Ñ€ÐµÐ²Ð¾Ð³Ð¸';
-COMMENT ON COLUMN tgpsdata.nprobegc IS 'ÐŸÑ€Ð¾Ð±ÐµÐ³, Ñ€Ð°ÑÑ‡Ð¸Ñ‚Ð°Ð½Ð½Ñ‹Ð¹ ÑÐµÑ€Ð²ÐµÑ€Ð¾Ð¼, Ð¼ÐµÑ‚Ñ€Ñ‹';
+COMMENT ON COLUMN tgpsdata.nout IS 'Áèòîâîå ïîëå ñîñòîÿíèÿ óïðàâëÿþùèõ êîíòàêòîâ (âûõîäîâ)';
+COMMENT ON COLUMN tgpsdata.ninp IS 'Áèòîâîå ïîëå ñîñòîÿíèÿ äàò÷èêîâ (âõîäîâ)';
+COMMENT ON COLUMN tgpsdata.nin0 IS 'Ñîñòîÿíèå äàò÷èêà (âõîäà) ¹ 1';
+COMMENT ON COLUMN tgpsdata.nfuel1 IS 'Ïîêàçàíèÿ äàò÷èêà óðîâíÿ òîïëèâà ¹ 1';
+COMMENT ON COLUMN tgpsdata.nprobeg IS 'Ïðîáåã, ðàñ÷èòàííûé òåðìèíàëîì';
+COMMENT ON COLUMN tgpsdata.nzaj IS 'Ñîñòîÿíèå çàæèãàíèÿ';
+COMMENT ON COLUMN tgpsdata.nalarm IS 'Ñîñòîÿíèå êíîïêè òðåâîãè';
+COMMENT ON COLUMN tgpsdata.nprobegc IS 'Ïðîáåã, ðàñ÷èòàííûé ñåðâåðîì, ìåòðû';
 
 CREATE INDEX igpsdata ON tgpsdata USING btree (ddata, ntime, cimei, nvalid);
 */
