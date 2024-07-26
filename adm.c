@@ -206,147 +206,150 @@ void terminal_decode(char *parcel, int parcel_size, ST_ANSWER *answer, ST_WORKER
     }
     printf("\n");*/
 
-    _unionHead head;
-    memcpy(head.bytes, parcel, sizeof(head.bytes));
-    
-    if (head.msg.TYPE == 0x03)
+    while (parcel == NULL)
     {
-        _unionImeiMessage imeiMessage;
-        parcel = parcel + 4;
-        memcpy(imeiMessage.bytes, parcel, head.msg.SIZE - 4);
-
-        if (imeiMessage.msg.HW_TYPE == 0x05) sprintf(hwType, "ADM600");
-        else if (imeiMessage.msg.HW_TYPE == 0x0A) sprintf(hwType, "ADM300");
-        else if (imeiMessage.msg.HW_TYPE == 0x0B) sprintf(hwType, "ADM100");
-        else if (imeiMessage.msg.HW_TYPE == 0x00) sprintf(hwType, "ADM50");
-
-        db_writeImeiAndIpToDb((char *) imeiMessage.msg.IMEI, ipAddress);
-
-        logging("terminal_decode[%s:%s:%d]: IMEI MSG: SIZE: %d DEV_ID: %X REPLY_EN: %X HW_TYPE: %s IMEI: %s\n", worker->listener->name, ipAddress, worker->listener->port, \
-                                                                                        head.msg.SIZE, head.msg.DEVICE_ID, imeiMessage.msg.REPLY_ENABLED, hwType, imeiMessage.msg.IMEI);
-        return;
-    }
-
-    if (head.msg.TYPE == 0x0A)
-    {
-        imei = db_getImeiOfIpInDb(ipAddress);
-        logging("terminal_decode[%s:%s:%d]: IMEI: %s  Photo MSG: SIZE: %d \n", worker->listener->name, ipAddress, worker->listener->port, imei, head.msg.SIZE);
-        return;
-    }
-
-    if (head.msg.TYPE == 0x01)
-    {
-        imei = db_getImeiOfIpInDb(ipAddress);
-        logging("terminal_decode[%s:%s:%d]: IMEI: %s  ADM-5 MSG: SIZE: %d \n", worker->listener->name, ipAddress, worker->listener->port, imei, head.msg.SIZE);
-        return;
-    }
-
-    
-    _unionAdm6 dataMessage;
-    parcel = parcel + 4;
-    memset(dataMessage.bytes, 0x00, sizeof(dataMessage.bytes));
-    memcpy(dataMessage.bytes, parcel, sizeof(dataMessage.bytes));  
-
-    _unionStatus status;
-    status.word = dataMessage.msg.STATUS;
-
-    imei = db_getImeiOfIpInDb(ipAddress);
-    
-    logging("terminal_decode[%s:%s:%d]: IMEI: %s  DEV_ID: %X  MSG_SIZE: %d  LAT: %f   LON: %f TIME: %u\n", worker->listener->name, ipAddress, worker->listener->port, imei, head.msg.DEVICE_ID, \
-                                                                                        head.msg.SIZE, dataMessage.msg.LAT, dataMessage.msg.LON, dataMessage.msg.DATE_TIME);  
-
-    logging("terminal_decode[%s:%d]: STATUS: reboot:%d, numberSim:%d, noConnection:%d, secureMode:%d, lowVoltage:%d, validCoord:%d, freezed:%d, externalPower:%d, \
-                alarm:%d, AntError:%d, shortCutAnt:%d, overVoltage:%d, boxSd:%d, coreDamage:%d, aGsm:%d, tangent:%d\n", worker->listener->name, worker->listener->port, \
-                status.statuses.reboot, status.statuses.numberSim, status.statuses.noConnection, status.statuses.secureMode, status.statuses.lowVoltage, \
-                status.statuses.validCoord, status.statuses.freezed, status.statuses.externalPower, status.statuses.alarm, status.statuses.AntError, \
-                status.statuses.shortCutAnt, status.statuses.overVoltage, status.statuses.boxSd, status.statuses.coreDamage, status.statuses.aGsm, status.statuses.tangent);      
-
-    
-    _unionAccMessage accMessage;
-    _unionAnalogMessage analogMessage;
-    _unionDigitalMessage digitalMessage;
-    _unionFuelTempMessage fuelTempMessage;
-    int incBytes = 28;
-    if (head.msg.TYPE & 0x04)
-    {
-        parcel = parcel + incBytes;
-        memcpy(accMessage.bytes, parcel, sizeof(accMessage.bytes));
-        incBytes = sizeof(accMessage.bytes);
-        getAccMessage = true;
-    }
-    if (head.msg.TYPE & 0x08)
-    {
-        parcel = parcel + incBytes;
-        memcpy(analogMessage.bytes, parcel, sizeof(analogMessage.bytes));
-        incBytes = sizeof(analogMessage.bytes);
-        getAnalogInputsMessage = true;
-    }
-    if (head.msg.TYPE & 0x10)
-    {
-        parcel = parcel + incBytes;
-        memcpy(digitalMessage.bytes, parcel, sizeof(digitalMessage.bytes));
-        incBytes = sizeof(digitalMessage.bytes);
-        getDiscretInputsMessage = true;
-    }
-    if (head.msg.TYPE & 0x20)
-    {
-        parcel = parcel + incBytes;
-        memcpy(fuelTempMessage.bytes, parcel, sizeof(fuelTempMessage.bytes));
-        incBytes = sizeof(fuelTempMessage.bytes);
-        getFuelAndTempMessage = true;
-    }
-    if (head.msg.TYPE & 0x40)
-    {
-        parcel = parcel + incBytes;
-        canTagLength = parcel[0];
-        if (canTagLength > sizeof(canTagBytes)) canTagLength = sizeof(canTagBytes);
-        memcpy(canTagBytes, parcel, canTagLength);
-        incBytes = canTagLength;
-        getCanDataMessage = true;
-    }
-    if (head.msg.TYPE & 0x80)
-    {
-        parcel = parcel + incBytes;
-        char msg[4];
-        memcpy(msg, parcel, sizeof(msg));
-        sscanf(msg, "%d", &odometr);
-        getVirtOdoMessage = true;
-    }      
-
-    satCountGPS = dataMessage.msg.SAT_COUNT & 0x0F;
-    satCountGlonass = dataMessage.msg.SAT_COUNT & 0xF0 >> 4;
-
-    if ( answer->count < MAX_RECORDS - 1 )
-        answer->count++;
-    record = &answer->records[answer->count - 1];
-    record->lat = (double)dataMessage.msg.LAT;
-    record->clat = 'E';
-    record->lon = (double)dataMessage.msg.LON;
-    record->clon = 'N';
-    memcpy(record->ip, ipAddress, sizeof(record->ip));
-    memcpy(record->imei, imei, sizeof(record->imei));
-    record->dev_id = (unsigned int) head.msg.DEVICE_ID;
-    record->height = (int)dataMessage.msg.HEIGHT;
-    record->speed = (double)dataMessage.msg.SPEED*0.1;
-    record->curs = (unsigned int)dataMessage.msg.COURSE*0.1;
-    record->hdop = (unsigned int)dataMessage.msg.HDOP*0.1;
-    record->data = (time_t)dataMessage.msg.DATE_TIME;
-    record->vbatt = (double)dataMessage.msg.V_BATTERY;
-    record->vbort = (double)dataMessage.msg.V_POWER;
-    record->status = (int)dataMessage.msg.STATUS;
-    record->satellites = (unsigned int)satCountGPS;
-    sprintf(record->soft, "%u", dataMessage.msg.SOFT);
-    record->gpsPntr = (unsigned int)dataMessage.msg.GPS_PNTR;
-    record->acc = (unsigned int)dataMessage.msg.ACC;
-    if (getFuelAndTempMessage)
-    {
-        record->temperature = (int)fuelTempMessage.msg.TEMP_0;
-        record->fuel[0] = (int)fuelTempMessage.msg.FUEL_LEVEL_0;
-        record->fuel[1] = (int)fuelTempMessage.msg.FUEL_LEVEL_1;
+        _unionHead head;
+        memcpy(head.bytes, parcel, sizeof(head.bytes));
         
+        if (head.msg.TYPE == 0x03)
+        {
+            _unionImeiMessage imeiMessage;
+            parcel = parcel + 4;
+            memcpy(imeiMessage.bytes, parcel, head.msg.SIZE - 4);
+
+            if (imeiMessage.msg.HW_TYPE == 0x05) sprintf(hwType, "ADM600");
+            else if (imeiMessage.msg.HW_TYPE == 0x0A) sprintf(hwType, "ADM300");
+            else if (imeiMessage.msg.HW_TYPE == 0x0B) sprintf(hwType, "ADM100");
+            else if (imeiMessage.msg.HW_TYPE == 0x00) sprintf(hwType, "ADM50");
+
+            db_writeImeiAndIpToDb((char *) imeiMessage.msg.IMEI, ipAddress);
+
+            logging("terminal_decode[%s:%s:%d]: IMEI MSG: SIZE: %d DEV_ID: %X REPLY_EN: %X HW_TYPE: %s IMEI: %s\n", worker->listener->name, ipAddress, worker->listener->port, \
+                                                                                            head.msg.SIZE, head.msg.DEVICE_ID, imeiMessage.msg.REPLY_ENABLED, hwType, imeiMessage.msg.IMEI);
+            return;
+        }
+
+        if (head.msg.TYPE == 0x0A)
+        {
+            imei = db_getImeiOfIpInDb(ipAddress);
+            logging("terminal_decode[%s:%s:%d]: IMEI: %s  Photo MSG: SIZE: %d \n", worker->listener->name, ipAddress, worker->listener->port, imei, head.msg.SIZE);
+            return;
+        }
+
+        if (head.msg.TYPE == 0x01)
+        {
+            imei = db_getImeiOfIpInDb(ipAddress);
+            logging("terminal_decode[%s:%s:%d]: IMEI: %s  ADM-5 MSG: SIZE: %d \n", worker->listener->name, ipAddress, worker->listener->port, imei, head.msg.SIZE);
+            return;
+        }
+
+        
+        _unionAdm6 dataMessage;
+        parcel = parcel + 4;
+        memset(dataMessage.bytes, 0x00, sizeof(dataMessage.bytes));
+        memcpy(dataMessage.bytes, parcel, sizeof(dataMessage.bytes));  
+
+        _unionStatus status;
+        status.word = dataMessage.msg.STATUS;
+
+        imei = db_getImeiOfIpInDb(ipAddress);
+        
+        logging("terminal_decode[%s:%s:%d]: IMEI: %s  DEV_ID: %X  MSG_SIZE: %d  LAT: %f   LON: %f TIME: %u\n", worker->listener->name, ipAddress, worker->listener->port, imei, head.msg.DEVICE_ID, \
+                                                                                            head.msg.SIZE, dataMessage.msg.LAT, dataMessage.msg.LON, dataMessage.msg.DATE_TIME);  
+
+        logging("terminal_decode[%s:%d]: STATUS: reboot:%d, numberSim:%d, noConnection:%d, secureMode:%d, lowVoltage:%d, validCoord:%d, freezed:%d, externalPower:%d, \
+                    alarm:%d, AntError:%d, shortCutAnt:%d, overVoltage:%d, boxSd:%d, coreDamage:%d, aGsm:%d, tangent:%d\n", worker->listener->name, worker->listener->port, \
+                    status.statuses.reboot, status.statuses.numberSim, status.statuses.noConnection, status.statuses.secureMode, status.statuses.lowVoltage, \
+                    status.statuses.validCoord, status.statuses.freezed, status.statuses.externalPower, status.statuses.alarm, status.statuses.AntError, \
+                    status.statuses.shortCutAnt, status.statuses.overVoltage, status.statuses.boxSd, status.statuses.coreDamage, status.statuses.aGsm, status.statuses.tangent);      
+
+        
+        _unionAccMessage accMessage;
+        _unionAnalogMessage analogMessage;
+        _unionDigitalMessage digitalMessage;
+        _unionFuelTempMessage fuelTempMessage;
+        int incBytes = 28;
+        if (head.msg.TYPE & 0x04)
+        {
+            parcel = parcel + incBytes;
+            memcpy(accMessage.bytes, parcel, sizeof(accMessage.bytes));
+            incBytes = sizeof(accMessage.bytes);
+            getAccMessage = true;
+        }
+        if (head.msg.TYPE & 0x08)
+        {
+            parcel = parcel + incBytes;
+            memcpy(analogMessage.bytes, parcel, sizeof(analogMessage.bytes));
+            incBytes = sizeof(analogMessage.bytes);
+            getAnalogInputsMessage = true;
+        }
+        if (head.msg.TYPE & 0x10)
+        {
+            parcel = parcel + incBytes;
+            memcpy(digitalMessage.bytes, parcel, sizeof(digitalMessage.bytes));
+            incBytes = sizeof(digitalMessage.bytes);
+            getDiscretInputsMessage = true;
+        }
+        if (head.msg.TYPE & 0x20)
+        {
+            parcel = parcel + incBytes;
+            memcpy(fuelTempMessage.bytes, parcel, sizeof(fuelTempMessage.bytes));
+            incBytes = sizeof(fuelTempMessage.bytes);
+            getFuelAndTempMessage = true;
+        }
+        if (head.msg.TYPE & 0x40)
+        {
+            parcel = parcel + incBytes;
+            canTagLength = parcel[0];
+            if (canTagLength > sizeof(canTagBytes)) canTagLength = sizeof(canTagBytes);
+            memcpy(canTagBytes, parcel, canTagLength);
+            incBytes = canTagLength;
+            getCanDataMessage = true;
+        }
+        if (head.msg.TYPE & 0x80)
+        {
+            parcel = parcel + incBytes;
+            char msg[4];
+            memcpy(msg, parcel, sizeof(msg));
+            sscanf(msg, "%d", &odometr);
+            getVirtOdoMessage = true;
+        }      
+
+        satCountGPS = dataMessage.msg.SAT_COUNT & 0x0F;
+        satCountGlonass = dataMessage.msg.SAT_COUNT & 0xF0 >> 4;
+
+        if ( answer->count < MAX_RECORDS - 1 )
+            answer->count++;
+        record = &answer->records[answer->count - 1];
+        record->lat = (double)dataMessage.msg.LAT;
+        record->clat = 'E';
+        record->lon = (double)dataMessage.msg.LON;
+        record->clon = 'N';
+        memcpy(record->ip, ipAddress, sizeof(record->ip));
+        memcpy(record->imei, imei, sizeof(record->imei));
+        record->dev_id = (unsigned int) head.msg.DEVICE_ID;
+        record->height = (int)dataMessage.msg.HEIGHT;
+        record->speed = (double)dataMessage.msg.SPEED*0.1;
+        record->curs = (unsigned int)dataMessage.msg.COURSE*0.1;
+        record->hdop = (unsigned int)dataMessage.msg.HDOP*0.1;
+        record->data = (time_t)dataMessage.msg.DATE_TIME;
+        record->vbatt = (double)dataMessage.msg.V_BATTERY;
+        record->vbort = (double)dataMessage.msg.V_POWER;
+        record->status = (int)dataMessage.msg.STATUS;
+        record->satellites = (unsigned int)satCountGPS;
+        sprintf(record->soft, "%u", dataMessage.msg.SOFT);
+        record->gpsPntr = (unsigned int)dataMessage.msg.GPS_PNTR;
+        record->acc = (unsigned int)dataMessage.msg.ACC;
+        if (getFuelAndTempMessage)
+        {
+            record->temperature = (int)fuelTempMessage.msg.TEMP_0;
+            record->fuel[0] = (int)fuelTempMessage.msg.FUEL_LEVEL_0;
+            record->fuel[1] = (int)fuelTempMessage.msg.FUEL_LEVEL_1;
+            
+        }
+        if (getVirtOdoMessage) record->probeg = (double)odometr;
+        record->type_protocol = (unsigned int)3;
     }
-    if (getVirtOdoMessage) record->probeg = (double)odometr;
-    record->type_protocol = (unsigned int)3;
 }   // terminal_decode
 //------------------------------------------------------------------------------
 
