@@ -38,7 +38,8 @@ INSERT INTO gps.tgpsdata (
 	IP,
 	nsoft,
 	gps_pntr,
-	nacc
+	nacc,
+	group_count
 ) VALUES (
 	to_timestamp($1::bigint),
 	$2::integer,
@@ -79,5 +80,6 @@ INSERT INTO gps.tgpsdata (
 	$37::inet,
 	$38::varchar,
 	$39::integer,
-	$40::integer
+	$40::integer,
+	$41::integer
 );

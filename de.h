@@ -50,6 +50,7 @@ typedef struct {
     time_t data;                // GPS date
     unsigned int type_protocol; // Type protocol 1 - egts, 2 - wialon, 3 - adm;
     unsigned int dev_id; 
+    unsigned int numCount;
 
     unsigned int status;        // terminas status field (bits field)
     unsigned int recnum;        // number of record

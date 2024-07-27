@@ -198,23 +198,37 @@ void terminal_decode(char *parcel, int parcel_size, ST_ANSWER *answer, ST_WORKER
     db_getImeiOfIpInDb = dlsym(db_library_handle, "getImeiOfIpInDb");
     
 
+    int sz = parcel_size;
 
-   /* printf("Readed bytes\n");
+    /*printf("Readed bytes\n");
     for (int i = 0; i < parcel_size; i++)
     {
         printf("%02X ", parcel[i] );
     }
     printf("\n");*/
 
-    while (parcel == NULL)
+    int num = 0;
+    int readedSize = 0;
+    while (sz > 0)
     {
+    	readedSize = 0;
+        //printf("SIZE %d\n", sz);
         _unionHead head;
         memcpy(head.bytes, parcel, sizeof(head.bytes));
-        
+        //printf("HEAD: \n");
+        //for (int i = 0; i < sizeof(head.bytes); i++)
+        //{
+        //    printf("%02X ", head.bytes[i] );
+        //}
+        //printf("\n");
+
+        logging("terminal_decode: typeMsg: %x\n", head.msg.TYPE);
         if (head.msg.TYPE == 0x03)
         {
             _unionImeiMessage imeiMessage;
             parcel = parcel + 4;
+            sz = sz - 4;
+	    readedSize = readedSize + 4;
             memcpy(imeiMessage.bytes, parcel, head.msg.SIZE - 4);
 
             if (imeiMessage.msg.HW_TYPE == 0x05) sprintf(hwType, "ADM600");
@@ -246,6 +260,8 @@ void terminal_decode(char *parcel, int parcel_size, ST_ANSWER *answer, ST_WORKER
         
         _unionAdm6 dataMessage;
         parcel = parcel + 4;
+        sz = sz - 4;
+	    readedSize = readedSize + 4;
         memset(dataMessage.bytes, 0x00, sizeof(dataMessage.bytes));
         memcpy(dataMessage.bytes, parcel, sizeof(dataMessage.bytes));  
 
@@ -272,6 +288,8 @@ void terminal_decode(char *parcel, int parcel_size, ST_ANSWER *answer, ST_WORKER
         if (head.msg.TYPE & 0x04)
         {
             parcel = parcel + incBytes;
+            sz = sz - incBytes;
+	        readedSize = readedSize + incBytes;
             memcpy(accMessage.bytes, parcel, sizeof(accMessage.bytes));
             incBytes = sizeof(accMessage.bytes);
             getAccMessage = true;
@@ -279,6 +297,8 @@ void terminal_decode(char *parcel, int parcel_size, ST_ANSWER *answer, ST_WORKER
         if (head.msg.TYPE & 0x08)
         {
             parcel = parcel + incBytes;
+            sz = sz - incBytes;
+	        readedSize = readedSize + incBytes;
             memcpy(analogMessage.bytes, parcel, sizeof(analogMessage.bytes));
             incBytes = sizeof(analogMessage.bytes);
             getAnalogInputsMessage = true;
@@ -286,6 +306,8 @@ void terminal_decode(char *parcel, int parcel_size, ST_ANSWER *answer, ST_WORKER
         if (head.msg.TYPE & 0x10)
         {
             parcel = parcel + incBytes;
+            sz = sz - incBytes;
+	        readedSize = readedSize + incBytes;
             memcpy(digitalMessage.bytes, parcel, sizeof(digitalMessage.bytes));
             incBytes = sizeof(digitalMessage.bytes);
             getDiscretInputsMessage = true;
@@ -293,6 +315,8 @@ void terminal_decode(char *parcel, int parcel_size, ST_ANSWER *answer, ST_WORKER
         if (head.msg.TYPE & 0x20)
         {
             parcel = parcel + incBytes;
+            sz = sz - incBytes;
+	        readedSize = readedSize + incBytes;
             memcpy(fuelTempMessage.bytes, parcel, sizeof(fuelTempMessage.bytes));
             incBytes = sizeof(fuelTempMessage.bytes);
             getFuelAndTempMessage = true;
@@ -300,6 +324,8 @@ void terminal_decode(char *parcel, int parcel_size, ST_ANSWER *answer, ST_WORKER
         if (head.msg.TYPE & 0x40)
         {
             parcel = parcel + incBytes;
+            sz = sz - incBytes;
+	        readedSize = readedSize + incBytes;
             canTagLength = parcel[0];
             if (canTagLength > sizeof(canTagBytes)) canTagLength = sizeof(canTagBytes);
             memcpy(canTagBytes, parcel, canTagLength);
@@ -309,6 +335,8 @@ void terminal_decode(char *parcel, int parcel_size, ST_ANSWER *answer, ST_WORKER
         if (head.msg.TYPE & 0x80)
         {
             parcel = parcel + incBytes;
+            sz = sz - incBytes;
+	        readedSize = readedSize + incBytes;
             char msg[4];
             memcpy(msg, parcel, sizeof(msg));
             sscanf(msg, "%d", &odometr);
@@ -340,6 +368,7 @@ void terminal_decode(char *parcel, int parcel_size, ST_ANSWER *answer, ST_WORKER
         sprintf(record->soft, "%u", dataMessage.msg.SOFT);
         record->gpsPntr = (unsigned int)dataMessage.msg.GPS_PNTR;
         record->acc = (unsigned int)dataMessage.msg.ACC;
+        record->numCount = num;
         if (getFuelAndTempMessage)
         {
             record->temperature = (int)fuelTempMessage.msg.TEMP_0;
@@ -349,6 +378,15 @@ void terminal_decode(char *parcel, int parcel_size, ST_ANSWER *answer, ST_WORKER
         }
         if (getVirtOdoMessage) record->probeg = (double)odometr;
         record->type_protocol = (unsigned int)3;
+        num++;
+
+	    int diff = head.msg.SIZE - readedSize; 
+	    if (diff > 0) 
+	    {
+		    parcel = parcel + diff;
+		    sz = sz - diff;
+	    }
+	    //printf("after %d\n", sz);
     }
 }   // terminal_decode
 //------------------------------------------------------------------------------

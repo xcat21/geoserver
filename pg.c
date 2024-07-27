@@ -69,7 +69,7 @@
 
 // Definitions
 #define MAX_SQL_SIZE 4096
-#define INSERT_PARAMS_COUNT 40
+#define INSERT_PARAMS_COUNT 41
 
 static __thread PGconn *db_connection = NULL;
 
@@ -110,6 +110,7 @@ static __thread char *paramValues[INSERT_PARAMS_COUNT]= {
 	(char*)1,
 	(char*)1,
 	(char*)1,    // 34
+	(char*)1,
 	(char*)1,
 	(char*)1,
 	(char*)1,
@@ -289,6 +290,7 @@ static int write_data_to_db(PGconn *connection, char *msg, char *sql_insert_poin
 	snprintf(paramValues[37], SIZE_MESSAGE_FIELD, "%s", record->soft);	           // $38
 	snprintf(paramValues[38], SIZE_MESSAGE_FIELD, "%u", record->gpsPntr);	       // $39
 	snprintf(paramValues[39], SIZE_MESSAGE_FIELD, "%u", record->acc);	           // $40
+	snprintf(paramValues[40], SIZE_MESSAGE_FIELD, "%d", record->numCount);	       // $41
 
 
 
@@ -812,34 +814,34 @@ CREATE TABLE tgpsdata (
     nprobegc real
 );
 
-COMMENT ON TABLE tgpsdata IS 'Данные GPS';
-COMMENT ON COLUMN tgpsdata.dsysdata IS 'Системная (серверная) дата записи';
-COMMENT ON COLUMN tgpsdata.ddata IS 'Дата GPS';
-COMMENT ON COLUMN tgpsdata.ntime IS 'Время GPS в секундах от начала суток';
-COMMENT ON COLUMN tgpsdata.cimei IS 'IMEI или ID устройства';
-COMMENT ON COLUMN tgpsdata.nstatus IS 'Состояние устройства GPS';
-COMMENT ON COLUMN tgpsdata.nlongitude IS 'Долгота в долях градусов';
-COMMENT ON COLUMN tgpsdata.cew IS 'Флаг долготы E/W';
-COMMENT ON COLUMN tgpsdata.nlatitude IS 'Широта в долях градусов';
-COMMENT ON COLUMN tgpsdata.cns IS 'Флаг широты N/S';
-COMMENT ON COLUMN tgpsdata.naltitude IS 'Высота, метры';
-COMMENT ON COLUMN tgpsdata.nspeed IS 'Скорость, км/ч (1миля = 1.852 km)';
-COMMENT ON COLUMN tgpsdata.nheading IS 'Направление движения (азимут)';
-COMMENT ON COLUMN tgpsdata.nsat IS 'Кол-во спутников';
-COMMENT ON COLUMN tgpsdata.nvalid IS '0-подозрительная запись, 1-норма';
-COMMENT ON COLUMN tgpsdata.nnum IS 'Порядковый № пакета GPS';
-COMMENT ON COLUMN tgpsdata.nvbort IS 'Напряжение бортовое';
-COMMENT ON COLUMN tgpsdata.nvbat IS 'Напряжение батареи устройства';
-COMMENT ON COLUMN tgpsdata.ntmp IS 'Температура устройства';
+COMMENT ON TABLE tgpsdata IS 'пїЅпїЅпїЅпїЅпїЅпїЅ GPS';
+COMMENT ON COLUMN tgpsdata.dsysdata IS 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ) пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ';
+COMMENT ON COLUMN tgpsdata.ddata IS 'пїЅпїЅпїЅпїЅ GPS';
+COMMENT ON COLUMN tgpsdata.ntime IS 'пїЅпїЅпїЅпїЅпїЅ GPS пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ';
+COMMENT ON COLUMN tgpsdata.cimei IS 'IMEI пїЅпїЅпїЅ ID пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ';
+COMMENT ON COLUMN tgpsdata.nstatus IS 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ GPS';
+COMMENT ON COLUMN tgpsdata.nlongitude IS 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ';
+COMMENT ON COLUMN tgpsdata.cew IS 'пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ E/W';
+COMMENT ON COLUMN tgpsdata.nlatitude IS 'пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ';
+COMMENT ON COLUMN tgpsdata.cns IS 'пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ N/S';
+COMMENT ON COLUMN tgpsdata.naltitude IS 'пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ';
+COMMENT ON COLUMN tgpsdata.nspeed IS 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅ/пїЅ (1пїЅпїЅпїЅпїЅ = 1.852 km)';
+COMMENT ON COLUMN tgpsdata.nheading IS 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅ)';
+COMMENT ON COLUMN tgpsdata.nsat IS 'пїЅпїЅпїЅ-пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ';
+COMMENT ON COLUMN tgpsdata.nvalid IS '0-пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, 1-пїЅпїЅпїЅпїЅпїЅ';
+COMMENT ON COLUMN tgpsdata.nnum IS 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ GPS';
+COMMENT ON COLUMN tgpsdata.nvbort IS 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ';
+COMMENT ON COLUMN tgpsdata.nvbat IS 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ';
+COMMENT ON COLUMN tgpsdata.ntmp IS 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ';
 COMMENT ON COLUMN tgpsdata.nhdop IS 'HDOP';
-COMMENT ON COLUMN tgpsdata.nout IS 'Битовое поле состояния управляющих контактов (выходов)';
-COMMENT ON COLUMN tgpsdata.ninp IS 'Битовое поле состояния датчиков (входов)';
-COMMENT ON COLUMN tgpsdata.nin0 IS 'Состояние датчика (входа) № 1';
-COMMENT ON COLUMN tgpsdata.nfuel1 IS 'Показания датчика уровня топлива № 1';
-COMMENT ON COLUMN tgpsdata.nprobeg IS 'Пробег, расчитанный терминалом';
-COMMENT ON COLUMN tgpsdata.nzaj IS 'Состояние зажигания';
-COMMENT ON COLUMN tgpsdata.nalarm IS 'Состояние кнопки тревоги';
-COMMENT ON COLUMN tgpsdata.nprobegc IS 'Пробег, расчитанный сервером, метры';
+COMMENT ON COLUMN tgpsdata.nout IS 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅпїЅ)';
+COMMENT ON COLUMN tgpsdata.ninp IS 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅ)';
+COMMENT ON COLUMN tgpsdata.nin0 IS 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅ) пїЅ 1';
+COMMENT ON COLUMN tgpsdata.nfuel1 IS 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ 1';
+COMMENT ON COLUMN tgpsdata.nprobeg IS 'пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ';
+COMMENT ON COLUMN tgpsdata.nzaj IS 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ';
+COMMENT ON COLUMN tgpsdata.nalarm IS 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ';
+COMMENT ON COLUMN tgpsdata.nprobegc IS 'пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ';
 
 CREATE INDEX igpsdata ON tgpsdata USING btree (ddata, ntime, cimei, nvalid);
 */
